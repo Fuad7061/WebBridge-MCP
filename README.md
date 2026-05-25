@@ -99,8 +99,9 @@ Chain multiple WebBridge tools in a single n8n workflow to perform complex brows
 │     action: "fill"                                              │
 │         │                                                       │
 │         ▼                                                       │
-│  [MCP Client] ── Step 4: browser_click (submit)                 │
-│     selector: "button[type=submit]"                             │
+│  [MCP Client] ── Step 4: browser_press_key (submit)             │
+│     key: "Enter"                                                │
+│  (or browser_click → selector: "button[type=submit]")           │
 │         │                                                       │
 │         ▼                                                       │
 │  [MCP Client] ── Step 5: browser_wait (wait for results)        │
@@ -147,6 +148,19 @@ curl -H "Authorization: Bearer wbr_your-key" \
 curl -H "Authorization: Bearer wbr_your-key" \
   -X POST http://localhost:3456/type \
   -d '{"selector":"#email","value":"user@example.com","submit":true}'
+
+# Press a keyboard key (Enter, Tab, Escape, etc.)
+curl -H "Authorization: Bearer wbr_your-key" \
+  -X POST http://localhost:3456/press_key \
+  -d '{"key":"Enter"}'
+
+curl -H "Authorization: Bearer wbr_your-key" \
+  -X POST http://localhost:3456/press_key \
+  -d '{"key":"Escape"}'
+
+curl -H "Authorization: Bearer wbr_your-key" \
+  -X POST http://localhost:3456/press_key \
+  -d '{"key":"ArrowDown","delay":50}'
 
 # Screenshot
 curl -H "Authorization: Bearer wbr_your-key" \
