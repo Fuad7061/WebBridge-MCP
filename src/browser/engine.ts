@@ -18,7 +18,13 @@ export function createBrowserManager(config: AppConfig) {
   }
 
   async function getBrowser(): Promise<Browser> {
-    if (!_browser) {
+    if (!_browser || !_browser.isConnected()) {
+      if (_browser) {
+        try { await _browser.close(); } catch { /* ignore */ }
+        _browser = null;
+        _context = null;
+        _page = null;
+      }
       const launchArgs = [
         '--no-first-run',
         '--no-default-browser-check',
@@ -50,6 +56,12 @@ export function createBrowserManager(config: AppConfig) {
         executablePath: config.chromePath || undefined,
         args: launchArgs,
       });
+
+      _browser.on('disconnected', () => {
+        _context = null;
+        _page = null;
+        _browser = null;
+      });
     }
     return _browser;
   }
@@ -74,11 +86,33 @@ export function createBrowserManager(config: AppConfig) {
 
   async function acquireContext(): Promise<{ context: BrowserContext; page: Page }> {
     if (closing) throw new Error('Browser is shutting down');
-    const context = await getContext();
-    if (!_page || _page.isClosed()) {
-      _page = await context.newPage();
+
+    // Attempt up to 2 times (in case browser crashed and needs restart)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const context = await getContext();
+        if (!_page || _page.isClosed()) {
+          _page = await context.newPage();
+          await applyStealthPatches(_page, config);
+        }
+        return { context, page: _page };
+      } catch (err) {
+        // If browser/context is dead, reset everything and retry
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('closed') || msg.includes('Connection') || msg.includes('Target')) {
+          try { await _page?.close().catch(() => {}); } catch { /* ignore */ }
+          try { await _context?.close().catch(() => {}); } catch { /* ignore */ }
+          try { await _browser?.close().catch(() => {}); } catch { /* ignore */ }
+          _page = null;
+          _context = null;
+          _browser = null;
+          if (attempt === 1) throw err;
+          continue;
+        }
+        throw err;
+      }
     }
-    return { context, page: _page };
+    throw new Error('Failed to acquire browser context after retry');
   }
 
   async function releaseContext(): Promise<void> {
