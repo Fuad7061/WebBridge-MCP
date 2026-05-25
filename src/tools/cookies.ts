@@ -125,6 +125,7 @@ export const cookieTools: ToolDefinition[] = [
         interface PendingCookie {
           name: string;
           value: string;
+          url?: string;
           domain?: string;
           path?: string;
           secure?: boolean;
@@ -132,7 +133,7 @@ export const cookieTools: ToolDefinition[] = [
           sameSite?: 'Strict' | 'Lax' | 'None';
         }
 
-        const pending: PendingCookie[] = [];
+        const pending: Array<PendingCookie & { useUrl?: string }> = [];
         const segments = raw.split(/;\s*/);
 
         for (const seg of segments) {
@@ -169,11 +170,11 @@ export const cookieTools: ToolDefinition[] = [
           const isHostPrefix = key.startsWith('__Host-');
           const isSecurePrefix = key.startsWith('__Secure-');
 
-          // __Host- cookies: must have secure:true, path:/, and NO domain
+          // __Host- cookies: must have secure:true, path:/, and NO explicit domain
           if (isHostPrefix) {
             pending.push({
               name: key, value: decodedValue,
-              path: '/', secure: true,
+              url, secure: true,
             });
           } else if (isSecurePrefix) {
             // __Secure- cookies: must have secure:true
@@ -195,8 +196,11 @@ export const cookieTools: ToolDefinition[] = [
 
         const cookies = pending.map(c => {
           const out: Record<string, unknown> = { name: c.name, value: c.value };
-          if (c.domain) out.domain = c.domain;
-          out.path = c.path || '/';
+          if (c.url) out.url = c.url;
+          else {
+            if (c.domain) out.domain = c.domain;
+            out.path = c.path || '/';
+          }
           if (c.secure) out.secure = true;
           if (c.httpOnly) out.httpOnly = true;
           if (c.sameSite) out.sameSite = c.sameSite;
