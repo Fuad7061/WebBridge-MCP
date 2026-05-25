@@ -9,14 +9,7 @@ RUN npm run build
 # ---- Production Stage ----
 FROM node:20-slim
 
-# Install Playwright system dependencies + Chromium
-RUN apt-get update && apt-get install -y \
-    libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 \
-    libcups2t64 libdrm2 libdbus-1-3 libxkbcommon0 \
-    libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
-    libpango-1.0-0 libcairo2 libasound2t64 \
-    --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+# Install Playwright system deps (uses Playwright's own dep list — always correct per Debian version)
 
 # Environment defaults
 ENV WEBBRIDGE_MODE=http
@@ -24,7 +17,7 @@ ENV WEBBRIDGE_PORT=3456
 ENV WEBBRIDGE_HOST=0.0.0.0
 ENV WEBBRIDGE_STEALTH_LEVEL=stealth
 ENV WEBBRIDGE_DATA_DIR=/data
-ENV WEBBRIDGE_HEADLESS=true
+ENV WEBBRIDGE_HEADLESS=new
 ENV WEBBRIDGE_MAX_CONCURRENCY=5
 ENV WEBBRIDGE_RATE_LIMIT_MAX=60
 
@@ -34,7 +27,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 RUN npm ci --omit=dev && \
-    npx playwright install chromium && \
+    npx playwright install --with-deps chromium && \
     rm -rf /root/.cache /tmp/*
 
 EXPOSE 3456
