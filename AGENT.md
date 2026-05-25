@@ -66,9 +66,13 @@ Stealth mode is enabled by default. You don't need to configure anything. WebBri
 ## Cookie & Session Persistence
 
 - Cookies survive across navigations within the same context
-- Use `browser_cookies_export` to save session state
-- Use `browser_cookies_import` to restore session state
-- On Coolify/Docker, the `/data` volume persists sessions across restarts
+- Cookies automatically survive browser crashes: the engine stores all cookies in-memory and replays them when a new browser context starts
+- Use `browser_cookies` `get` to verify cookies are active
+- Use `browser_cookies_from_header` to set cookies from a raw header string (handles `__Secure-` and `__Host-` prefixes)
+- Use `browser_cookies_export` to save session state for later reuse
+- Use `browser_cookies_import` to restore a previously exported session
+- Calling `browser_cookies` `clear` clears both live cookies and the in-memory crash-recovery store
+- On Coolify/Docker, the `/data` volume persists the Chrome profile across container restarts
 
 ## WebMCP (Chrome 146+)
 

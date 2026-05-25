@@ -200,7 +200,7 @@ curl -X POST http://localhost:3456/cookies \
   -H "Authorization: Bearer wbr_key" \
   -d '{"action":"set","name":"session","value":"abc123","domain":".example.com"}'
 
-# Clear all cookies
+# Clear all cookies (also clears the in-memory crash-recovery store)
 curl -X POST http://localhost:3456/cookies \
   -H "Authorization: Bearer wbr_key" \
   -d '{"action":"clear"}'
@@ -209,11 +209,13 @@ curl -X POST http://localhost:3456/cookies \
 curl -X POST http://localhost:3456/cookies_export \
   -H "Authorization: Bearer wbr_key"
 
-# Import cookies
+# Import cookies (persisted for crash recovery automatically)
 curl -X POST http://localhost:3456/cookies_import \
   -H "Authorization: Bearer wbr_key" \
   -d '{"cookies":[{"name":"session","value":"xyz","domain":".example.com"}]}'
 ```
+
+> **Crash recovery**: All cookies set via `cookies` (set), `cookies_import`, or `cookies_from_header` are automatically saved in-memory. If the browser crashes or disconnects between requests, the engine restarts Chromium and replays your cookies before returning — no manual re-import needed. Use `cookies` `clear` to purge both the live context and the recovery store.
 
 ## Overlay Dismissal
 
