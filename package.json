@@ -1,0 +1,45 @@
+{
+  "name": "webridge-mcp",
+  "version": "1.0.0",
+  "description": "Dual-protocol browser automation server (MCP + HTTP REST API) with anti-detection stealth, WebMCP bridge, and Coolify deployment support.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "webridge": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "start": "node dist/index.js",
+    "start:http": "node dist/index.js --mode=http",
+    "start:stdio": "node dist/index.js --mode=stdio",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "browser-automation",
+    "webmcp",
+    "playwright",
+    "stealth",
+    "coolify",
+    "ai-agent"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "commander": "^12.0.0",
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^10.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "playwright": "^1.50.0",
+    "chrome-remote-interface": "^0.33.3",
+    "uuid": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.7.0",
+    "esbuild": "^0.25.0"
+  }
+}

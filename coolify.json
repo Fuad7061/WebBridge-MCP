@@ -1,0 +1,40 @@
+{
+  "name": "WebBridge MCP",
+  "build": {
+    "build_pack": "dockerfile",
+    "base_directory": "/"
+  },
+  "network": {
+    "port": 3456
+  },
+  "health_check": {
+    "path": "/health",
+    "port": 3456
+  },
+  "env": {
+    "WEBBRIDGE_AUTH_TOKEN": {
+      "value": "",
+      "description": "API key for authentication (required)"
+    },
+    "WEBBRIDGE_HEADLESS": {
+      "value": "true",
+      "description": "Browser headless mode: true, false, or new"
+    },
+    "WEBBRIDGE_STEALTH_LEVEL": {
+      "value": "stealth",
+      "description": "Anti-detection level: basic, standard, stealth"
+    },
+    "WEBBRIDGE_TYPING_DELAY_MS": {
+      "value": "50",
+      "description": "Delay between keystrokes in ms"
+    },
+    "WEBBRIDGE_MAX_CONCURRENCY": {
+      "value": "5",
+      "description": "Max concurrent browser contexts"
+    },
+    "WEBBRIDGE_RATE_LIMIT_MAX": {
+      "value": "60",
+      "description": "Requests per minute per IP"
+    }
+  }
+}

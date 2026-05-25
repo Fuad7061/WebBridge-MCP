@@ -1,0 +1,50 @@
+import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
+
+export const monitorTool: ToolDefinition = {
+  name: 'surf_monitor',
+  description: 'Monitor a CSS selector and detect when its text content changes',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      selector: { type: 'string', description: 'CSS selector to monitor' },
+      timeout: { type: 'number', default: 60000, description: 'Max monitoring time in ms' },
+      interval: { type: 'number', default: 500, description: 'Poll interval in ms' },
+    },
+    required: ['selector'],
+  },
+  handler: async (args, ctx) => {
+    const { page } = await ctx.browser.acquireContext();
+    try {
+      
+      const selector = String(args.selector);
+      const timeout = Number(args.timeout) || 60000;
+      const interval = Number(args.interval) || 500;
+
+      const result = await page.evaluate(
+        async ({ sel, time, inter }) => {
+          const start = Date.now();
+          let lastText = document.querySelector(sel)?.textContent?.trim() || '';
+
+          while (Date.now() - start < time) {
+            await new Promise(r => setTimeout(r, inter));
+            const currentText = document.querySelector(sel)?.textContent?.trim() || '';
+            if (currentText !== lastText) {
+              return {
+                changed: true,
+                previous: lastText.slice(0, 1000),
+                current: currentText.slice(0, 1000),
+                elapsed: Date.now() - start,
+              };
+            }
+          }
+          return { changed: false, previous: lastText.slice(0, 1000), elapsed: time };
+        },
+        { sel: selector, time: timeout, inter: interval }
+      );
+
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } finally {
+      await ctx.browser.releaseContext();
+    }
+  },
+};
