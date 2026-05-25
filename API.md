@@ -187,6 +187,30 @@ curl -X POST http://localhost:3456/close_tab \
   -d '{"index":1}'
 ```
 
+## Keyboard
+
+```bash
+# Press Enter (submit form, confirm dialog)
+curl -X POST http://localhost:3456/press_key \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"key":"Enter"}'
+
+# Press Tab (move to next field)
+curl -X POST http://localhost:3456/press_key \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"key":"Tab"}'
+
+# Press Escape (close modal, cancel)
+curl -X POST http://localhost:3456/press_key \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"key":"Escape"}'
+
+# Press ArrowDown (select in dropdown)
+curl -X POST http://localhost:3456/press_key \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"key":"ArrowDown","delay":50}'
+```
+
 ## Cookies
 
 ```bash

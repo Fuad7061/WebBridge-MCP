@@ -35,6 +35,12 @@ Always recon first to get stable selectors. Then:
 - `browser_fill_form` for multiple fields at once (matches by label, name, id, placeholder)
 - `browser_select` for dropdown selections
 
+## Keyboard
+
+- `browser_press_key` — press any keyboard key (Enter, Tab, Escape, ArrowDown, etc.)
+- Use it to submit forms, navigate dropdowns, close modals, or trigger keyboard shortcuts
+- `delay` parameter mimics human typing by adding ms between keydown and keyup
+
 ## Cookies
 
 - `browser_cookies` — get/set/clear individual cookies
@@ -140,10 +146,15 @@ Step 3: Type into Search Field
     text: "search query"
     action: "fill"
 
-Step 4: Click Submit Button
-  Tool: browser_click
-  Arguments:
-    selector: "button[type=submit]"
+Step 4: Submit Form (click or keyboard)
+  Option A — click:
+    Tool: browser_click
+    Arguments:
+      selector: "button[type=submit]"
+  Option B — press Enter (often simpler):
+    Tool: browser_press_key
+    Arguments:
+      key: "Enter"
 
 Step 5: Wait for Results
   Tool: browser_wait
@@ -176,7 +187,8 @@ Step 7: (Optional) Take Screenshot
 | Issue | Solution |
 |---|---|
 | Element not found | Try `recon` again (page may have loaded differently) |
-| Click not working | Try coordinates or `dispatch` event |
+| Click not working | Try coordinates or `dispatch` event, or use `browser_press_key` with `"Enter"` |
+| Keyboard not working | Ensure the correct element is focused first via `browser_click` or `browser_type` |
 | Page not loading fully | Increase navigation timeout |
 | Auth errors | Check `WEBBRIDGE_AUTH_TOKEN` matches `Authorization` header |
 | Bot detection | Ensure stealth level is `stealth` (not `basic`) |
