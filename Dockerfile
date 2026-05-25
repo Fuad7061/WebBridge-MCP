@@ -27,8 +27,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 RUN npm ci --omit=dev && \
-    npx playwright install --with-deps chromium && \
-    rm -rf /root/.cache /tmp/*
+    npx playwright install --with-deps chromium
 
 EXPOSE 3456
 VOLUME ["/data"]
