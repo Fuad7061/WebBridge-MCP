@@ -90,17 +90,17 @@ export const cookieTools: ToolDefinition[] = [
   },
   {
     name: 'browser_cookies_from_header',
-    description: 'Set cookies from a raw Cookie header string (e.g. "session=abc; token=xyz"). Parses name=value pairs and sets them for the given URL or domain.',
+    description: 'Set cookies from a raw Cookie header string. Handles __Secure- and __Host- prefixed cookies, Secure/HttpOnly flags, Path/Domain/SameSite attributes, and URL-encoded values.',
     inputSchema: {
       type: 'object',
       properties: {
         cookieString: {
           type: 'string',
-          description: 'Cookie header string, e.g. "session=abc123; token=xyz789; theme=dark"',
+          description: 'Cookie header string — simple format "session=abc; token=xyz" or full format with attributes "session=abc; Secure; HttpOnly; Path=/; SameSite=Lax"',
         },
         url: {
           type: 'string',
-          description: 'URL to scope cookies to (required — e.g. https://example.com)',
+          description: 'URL to scope cookies to (required)',
         },
         domain: {
           type: 'string',
@@ -114,32 +114,96 @@ export const cookieTools: ToolDefinition[] = [
       try {
         const raw = String(args.cookieString);
         const url = String(args.url);
-        const domain = args.domain ? String(args.domain) : undefined;
+        const overrideDomain = args.domain ? String(args.domain) : undefined;
 
-        const cookies: Array<{ name: string; value: string; domain?: string; path?: string }> = [];
-        const pairs = raw.split(/;\s*/);
+        // Derive base domain from URL
+        let baseDomain: string;
+        try { baseDomain = new URL(url).hostname; } catch { baseDomain = url; }
 
-        for (const pair of pairs) {
-          const sep = pair.indexOf('=');
-          if (sep === -1) continue;
-          const name = pair.slice(0, sep).trim();
-          const value = pair.slice(sep + 1).trim();
-          if (!name) continue;
+        const KNOWN_ATTRS = new Set(['path', 'domain', 'expires', 'max-age', 'samesite', 'secure', 'httponly', 'priority']);
 
-          // Extract domain from URL for Playwright
-          let cookieDomain = domain;
-          if (!cookieDomain) {
-            try { cookieDomain = new URL(url).hostname; } catch { cookieDomain = url; }
-          }
-
-          cookies.push({ name, value, domain: cookieDomain, path: '/' });
+        interface PendingCookie {
+          name: string;
+          value: string;
+          domain?: string;
+          path?: string;
+          secure?: boolean;
+          httpOnly?: boolean;
+          sameSite?: 'Strict' | 'Lax' | 'None';
         }
 
-        if (cookies.length === 0) {
+        const pending: PendingCookie[] = [];
+        const segments = raw.split(/;\s*/);
+
+        for (const seg of segments) {
+          const eqIdx = seg.indexOf('=');
+          const key = eqIdx === -1 ? seg.trim().toLowerCase() : seg.slice(0, eqIdx).trim();
+          const val = eqIdx === -1 ? '' : seg.slice(eqIdx + 1).trim();
+
+          // Check if this segment is a cookie attribute flag
+          if (KNOWN_ATTRS.has(key) && pending.length > 0) {
+            const cur = pending[pending.length - 1];
+            if (key === 'secure') cur.secure = true;
+            else if (key === 'httponly') cur.httpOnly = true;
+            else if (key === 'path') cur.path = val;
+            else if (key === 'domain') cur.domain = val;
+            else if (key === 'samesite') { const v = val.toLowerCase(); if (v === 'strict') cur.sameSite = 'Strict'; else if (v === 'lax') cur.sameSite = 'Lax'; else if (v === 'none') cur.sameSite = 'None'; }
+            continue;
+          }
+
+          // Standalone flag (Secure, HttpOnly) with no =
+          if (eqIdx === -1 && (key === 'secure' || key === 'httponly') && pending.length > 0) {
+            const cur = pending[pending.length - 1];
+            if (key === 'secure') cur.secure = true;
+            else if (key === 'httponly') cur.httpOnly = true;
+            continue;
+          }
+
+          // Extract domain for non-Host cookies
+          let cookieDomain = overrideDomain || baseDomain;
+
+          // URL-decode value
+          let decodedValue = val;
+          try { decodedValue = decodeURIComponent(val); } catch { decodedValue = val; }
+
+          const isHostPrefix = key.startsWith('__Host-');
+          const isSecurePrefix = key.startsWith('__Secure-');
+
+          // __Host- cookies: must have secure:true, path:/, and NO domain
+          if (isHostPrefix) {
+            pending.push({
+              name: key, value: decodedValue,
+              path: '/', secure: true,
+            });
+          } else if (isSecurePrefix) {
+            // __Secure- cookies: must have secure:true
+            pending.push({
+              name: key, value: decodedValue,
+              domain: cookieDomain, path: '/', secure: true,
+            });
+          } else {
+            pending.push({
+              name: key, value: decodedValue,
+              domain: cookieDomain, path: '/',
+            });
+          }
+        }
+
+        if (pending.length === 0) {
           return { content: [{ type: 'text', text: 'No valid cookie pairs found in string' }], isError: true };
         }
 
-        await context.addCookies(cookies);
+        const cookies = pending.map(c => {
+          const out: Record<string, unknown> = { name: c.name, value: c.value };
+          if (c.domain) out.domain = c.domain;
+          out.path = c.path || '/';
+          if (c.secure) out.secure = true;
+          if (c.httpOnly) out.httpOnly = true;
+          if (c.sameSite) out.sameSite = c.sameSite;
+          return out;
+        });
+
+        await context.addCookies(cookies as any);
         return { content: [{ type: 'text', text: `Set ${cookies.length} cookie(s) from header string` }] };
       } finally {
         await ctx.browser.releaseContext();
