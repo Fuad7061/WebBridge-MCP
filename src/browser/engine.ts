@@ -9,12 +9,24 @@ export function createBrowserManager(config: AppConfig) {
   let _browser: Browser | null = null;
   let _context: BrowserContext | null = null;
   let _page: Page | null = null;
+  let _contextWasFresh = false;
   let closing = false;
   const isMac = platform() === 'darwin';
+
+  // ── Persistent cookie store (survives browser restarts) ──────────
+  let _storedCookies: any[] = [];
 
   const userDataDir = join(config.dataDir, 'chrome-profile');
   if (!existsSync(userDataDir)) {
     mkdirSync(userDataDir, { recursive: true });
+  }
+
+  async function replayStoredCookies(ctx: BrowserContext): Promise<void> {
+    if (_storedCookies.length > 0) {
+      try {
+        await ctx.addCookies(_storedCookies);
+      } catch { /* ignore — cookies may be stale */ }
+    }
   }
 
   async function getBrowser(): Promise<Browser> {
@@ -80,6 +92,9 @@ export function createBrowserManager(config: AppConfig) {
         ignoreHTTPSErrors: true,
         proxy: config.proxyUrl ? { server: config.proxyUrl } : undefined,
       });
+      _contextWasFresh = true;
+    } else {
+      _contextWasFresh = false;
     }
     return _context;
   }
@@ -87,7 +102,6 @@ export function createBrowserManager(config: AppConfig) {
   async function acquireContext(): Promise<{ context: BrowserContext; page: Page }> {
     if (closing) throw new Error('Browser is shutting down');
 
-    // Attempt up to 2 times (in case browser crashed and needs restart)
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const context = await getContext();
@@ -95,9 +109,12 @@ export function createBrowserManager(config: AppConfig) {
           _page = await context.newPage();
           await applyStealthPatches(_page, config);
         }
+        // Replay persisted cookies on fresh contexts (browser restart recovery)
+        if (_contextWasFresh && _storedCookies.length > 0) {
+          await replayStoredCookies(context);
+        }
         return { context, page: _page };
       } catch (err) {
-        // If browser/context is dead, reset everything and retry
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes('closed') || msg.includes('Connection') || msg.includes('Target')) {
           try { await _page?.close().catch(() => {}); } catch { /* ignore */ }
@@ -134,7 +151,19 @@ export function createBrowserManager(config: AppConfig) {
     _browser = null;
   }
 
-  return { acquireContext, releaseContext, getPage, close };
+  function storeCookies(cookies: any[]): void {
+    _storedCookies = cookies;
+  }
+
+  function getStoredCookies(): any[] {
+    return _storedCookies;
+  }
+
+  function clearStoredCookies(): void {
+    _storedCookies = [];
+  }
+
+  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies };
 }
 
 export type BrowserManager = ReturnType<typeof createBrowserManager>;

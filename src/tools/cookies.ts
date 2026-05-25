@@ -34,11 +34,14 @@ export const cookieTools: ToolDefinition[] = [
             domain: args.domain ? String(args.domain) : undefined,
             path: String(args.path || '/'),
           }]);
+          // Persist for crash recovery
+          ctx.browser.storeCookies(await context.cookies());
           return { content: [{ type: 'text', text: `Cookie set: ${args.name}` }] };
         }
 
         if (action === 'clear') {
           await context.clearCookies();
+          ctx.browser.clearStoredCookies();
           return { content: [{ type: 'text', text: 'All cookies cleared' }] };
         }
 
@@ -82,6 +85,7 @@ export const cookieTools: ToolDefinition[] = [
       try {
         const cookies = args.cookies as Array<{ name: string; value: string; domain?: string; url?: string; path?: string }>;
         await context.addCookies(cookies);
+        ctx.browser.storeCookies(await context.cookies());
         return { content: [{ type: 'text', text: `Imported ${cookies.length} cookies` }] };
       } finally {
         await ctx.browser.releaseContext();
@@ -208,6 +212,7 @@ export const cookieTools: ToolDefinition[] = [
         });
 
         await context.addCookies(cookies as any);
+        ctx.browser.storeCookies(await context.cookies());
         return { content: [{ type: 'text', text: `Set ${cookies.length} cookie(s) from header string` }] };
       } finally {
         await ctx.browser.releaseContext();

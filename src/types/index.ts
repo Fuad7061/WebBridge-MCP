@@ -27,6 +27,9 @@ export interface BrowserManager {
   releaseContext(): Promise<void>;
   getPage(): Promise<Page>;
   close(): Promise<void>;
+  storeCookies(cookies: any[]): void;
+  getStoredCookies(): any[];
+  clearStoredCookies(): void;
 }
 
 export interface SessionStore {
