@@ -144,10 +144,11 @@ curl -H "Authorization: Bearer wbr_your-key" \
   -X POST http://localhost:3456/click \
   -d '{"selector":"button#submit"}'
 
-# Type into a field
+# Type into a field (clear + fill instantly)
 curl -H "Authorization: Bearer wbr_your-key" \
   -X POST http://localhost:3456/type \
-  -d '{"selector":"#email","value":"user@example.com","submit":true}'
+  -d '{"selector":"#email","text":"user@example.com","submit":true}'
+# Accepts "value" as alias for "text", and action: "type" for real keystrokes
 
 # Press a keyboard key (Enter, Tab, Escape, etc.)
 curl -H "Authorization: Bearer wbr_your-key" \

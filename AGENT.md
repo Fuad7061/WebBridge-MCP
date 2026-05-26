@@ -31,7 +31,7 @@ Always recon first to get stable selectors. Then:
 
 ## Form Filling
 
-- `browser_type` for single fields (with real keystrokes)
+- `browser_type` for single fields (supports `text` or `value` param, `action: "fill"` or `action: "type"`, `submit`, `clear`, `delay`)
 - `browser_fill_form` for multiple fields at once (matches by label, name, id, placeholder)
 - `browser_select` for dropdown selections
 

@@ -59,15 +59,25 @@ curl -X POST http://localhost:3456/click \
 
 ### Type Text
 ```bash
-# Type with clear + submit
+# Fill (clear + fill instantly, default)
 curl -X POST http://localhost:3456/type \
   -H "Authorization: Bearer wbr_key" \
-  -d '{"selector":"#email","value":"user@example.com","submit":true}'
+  -d '{"selector":"#email","text":"user@example.com","submit":true}'
 
-# Type without clearing
+# Fill without clearing existing text
 curl -X POST http://localhost:3456/type \
   -H "Authorization: Bearer wbr_key" \
-  -d '{"selector":"input[name=\"search\"]","value":"hello","clear":false}'
+  -d '{"selector":"input[name=\"search\"]","text":"hello","clear":false}'
+
+# Real keystrokes (human-like per-character typing)
+curl -X POST http://localhost:3456/type \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"selector":"#password","value":"secret","action":"type","delay":30}'
+
+# Param aliases: "value" works as alias for "text"
+curl -X POST http://localhost:3456/type \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"selector":"#search","value":"query","submit":true}'
 ```
 
 ### Fill Form (multi-field)
