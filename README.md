@@ -211,6 +211,227 @@ curl -X POST http://localhost:3456/cookies_from_header \
   }'
 ```
 
+## Tool Parameter Reference
+
+### Navigation
+
+**`browser_navigate`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `url` | string | ✅ | — | URL to navigate to (http/https) |
+| `waitUntil` | string | — | `load` | When to consider navigation done: `load`, `domcontentloaded`, or `networkidle` |
+| `timeout` | number | — | `30000` | Navigation timeout in ms |
+
+**`browser_back`** — No parameters. Goes back one page in history.
+
+**`browser_forward`** — No parameters. Goes forward one page in history.
+
+**`browser_reload`** — No parameters. Reloads the current page.
+
+### Clicking & Scrolling
+
+**`browser_click`** (at least one of `selector`/`text`/`x+y` required)
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | — | — | CSS selector of element to click |
+| `text` | string | — | — | Click element containing this text (fuzzy match) |
+| `x` | number | — | — | X coordinate for pixel-precise click |
+| `y` | number | — | — | Y coordinate for pixel-precise click |
+| `waitAfter` | number | — | `500` | Wait ms after click |
+
+**`browser_scroll_to_element`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | — | — | CSS selector of element to scroll into view |
+| `text` | string | — | — | Scroll to element containing this text |
+
+**`browser_scroll`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `amount` | number | — | `800` | Pixels to scroll (negative = up) |
+
+### Typing & Forms
+
+**`browser_type`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | ✅ | — | CSS selector of the input field |
+| `text` | string | — | — | Text to type (alias: `value`) |
+| `value` | string | — | — | Text to type (alias: `text`) |
+| `action` | string | — | `fill` | `"fill"` = clear + fill instantly; `"type"` = per-character keystrokes with delay |
+| `clear` | boolean | — | `true` | Clear existing content first (only for `action: "fill"`) |
+| `submit` | boolean | — | `false` | Press Enter after typing |
+| `delay` | number | — | `50` | Delay between keystrokes in ms (for `action: "type"`) |
+
+**`browser_fill_form`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `fields` | object | ✅ | — | Map of field identifiers (label, name, id, or placeholder) to values, e.g. `{"email":"a@b.com","password":"secret"}` |
+| `submit` | boolean | — | `false` | Submit the form after filling |
+
+**`browser_select`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | ✅ | — | CSS selector of the `<select>` element |
+| `value` | string | — | — | Option `value` attribute to select |
+| `label` | string | — | — | Option visible text label to select |
+
+### Keyboard
+
+**`browser_press_key`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `key` | string | ✅ | — | Key to press: `Enter`, `Tab`, `Escape`, `Backspace`, `Delete`, `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Home`, `End`, `PageUp`, `PageDown`, `Space`, `Control`, `Alt`, `Shift`, `Meta`, `F1`–`F12` |
+| `delay` | number | — | `0` | Delay between keydown and keyup in ms |
+
+### Screenshots
+
+**`browser_screenshot`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | — | — | CSS selector of element to capture (omit for full viewport) |
+| `fullPage` | boolean | — | `false` | Capture full page (scrollable length) |
+
+### Tab Management
+
+**`browser_list_tabs`** — No parameters. Returns all open tabs with index, URL, and title.
+
+**`browser_new_tab`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `url` | string | — | — | URL to open in the new tab |
+
+**`browser_switch_tab`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `index` | number | ✅ | — | Tab index to switch to (0-based) |
+
+**`browser_close_tab`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `index` | number | ✅ | — | Tab index to close (0-based) |
+
+### Cookies
+
+**`browser_cookies`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `action` | string | ✅ | — | `"get"` = read all cookies; `"set"` = set one cookie; `"clear"` = delete all cookies |
+| `name` | string | — | — | Cookie name (for `action: "set"`) |
+| `value` | string | — | — | Cookie value (for `action: "set"`) |
+| `url` | string | — | — | URL scope (for `action: "set"`) |
+| `domain` | string | — | — | Cookie domain (for `action: "set"`) |
+| `path` | string | — | `/` | Cookie path (for `action: "set"`) |
+
+**`browser_cookies_export`** — No parameters. Returns all cookies as a JSON blob. Also stores them in the session.
+
+**`browser_cookies_import`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `cookies` | array | ✅ | — | Array of cookie objects (from `browser_cookies_export` output) |
+
+**`browser_cookies_from_header`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `cookieString` | string | ✅ | — | Raw Cookie header string, e.g. `"session=abc; token=xyz"`. Supports `__Secure-` and `__Host-` prefixed cookies, `Secure`/`HttpOnly`/`Path`/`Domain`/`SameSite` attributes |
+| `url` | string | ✅ | — | URL to scope cookies to |
+| `domain` | string | — | — | Optional domain override (e.g. `.example.com`) |
+
+> **Crash recovery**: All cookies set via any method are saved in-memory. If the browser crashes between requests, the engine restarts and replays your cookies automatically.
+
+### Page Content Extraction
+
+**`browser_get_text`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | — | — | CSS selector to scope text (omit for full page text) |
+
+**`browser_get_html`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | — | — | CSS selector to scope HTML (omit for full page HTML) |
+
+**`browser_get_url`** — No parameters. Returns the current page URL.
+
+**`browser_get_title`** — No parameters. Returns the current page title.
+
+**`browser_find_elements`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | ✅ | — | CSS selector to find matching elements |
+
+### Reconnaissance
+
+**`recon`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `url` | string | — | — | Navigate to URL first, then scan (omit to scan current page) |
+
+Returns a complete page analysis: elements with selectors, forms with fields, headings, meta tags, overlays, captchas, content summary.
+
+### JavaScript Evaluation
+
+**`browser_evaluate`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `code` | string | ✅ | — | JavaScript code to execute in the page context |
+
+### Overlay Dismissal
+
+**`browser_dismiss_overlays`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `method` | string | — | `auto` | `"auto"` = intelligent detect + dismiss; `"click"` = try clicking common accept/close buttons; `"scroll"` = scroll past overlays |
+
+### Waiting
+
+**`browser_wait`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | — | — | CSS selector to wait for (omit for pure delay) |
+| `timeout` | number | — | `30000` | Max wait time in ms |
+| `ms` | number | — | — | Milliseconds to sleep (only used when `selector` is omitted) |
+
+### Crawling & Mapping
+
+**`browser_crawl`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `url` | string | ✅ | — | Starting URL for the crawl |
+| `maxDepth` | number | — | `2` | Maximum link depth to follow |
+| `maxPages` | number | — | `20` | Maximum pages to visit |
+| `include` | array of strings | — | — | Only crawl URLs matching these patterns |
+| `exclude` | array of strings | — | — | Skip URLs matching these patterns |
+| `extractContent` | boolean | — | `false` | Extract text content from each page |
+
+**`browser_map`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `url` | string | ✅ | — | Starting URL |
+| `maxPages` | number | — | `50` | Maximum pages to discover |
+
+### Element Monitoring
+
+**`surf_monitor`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `selector` | string | ✅ | — | CSS selector to monitor for changes |
+| `timeout` | number | — | `60000` | Max monitoring time in ms |
+| `interval` | number | — | `500` | Poll interval in ms |
+
+### WebMCP Bridge (Chrome 146+)
+
+**`webmcp_discover`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `url` | string | — | — | Navigate to URL first (optional, uses current page if omitted) |
+
+**`webmcp_call`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `tool` | string | ✅ | — | Name of the WebMCP tool to invoke |
+| `args` | object | — | — | Arguments to pass to the WebMCP tool |
+
 ## Environment Variables
 
 | Variable | Default | Description |
