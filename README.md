@@ -174,7 +174,9 @@ curl -H "Authorization: Bearer wbr_your-key" \
   -d '{"url":"https://github.com"}'
 
 # List tabs
-curl -H "Authorization: Bearer wbr_your-key" http://localhost:3456/tabs
+curl -X POST -H "Authorization: Bearer wbr_your-key" \
+  http://localhost:3456/list_tabs
+# (alias: POST /tabs)
 
 # Dismiss cookie banners
 curl -H "Authorization: Bearer wbr_your-key" \

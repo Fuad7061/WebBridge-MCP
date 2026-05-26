@@ -179,7 +179,8 @@ curl -X POST http://localhost:3456/screenshot \
 
 ```bash
 # List all tabs
-curl http://localhost:3456/tabs -H "Authorization: Bearer wbr_key"
+curl -X POST http://localhost:3456/list_tabs -H "Authorization: Bearer wbr_key"
+# (alias: POST /tabs)
 
 # Open new tab
 curl -X POST http://localhost:3456/new_tab \
