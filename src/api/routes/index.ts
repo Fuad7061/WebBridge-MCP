@@ -54,6 +54,14 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
         return { success: !result.isError, data: result.content };
       });
     }
+    if (tool.name === 'browser_dismiss_overlays') {
+      app.post('/dismiss', async (request, reply) => {
+        const args = (request.body as Record<string, unknown>) || {};
+        const result = await registry.callTool(tool.name, args);
+        if (result.isError) reply.status(400);
+        return { success: !result.isError, data: result.content };
+      });
+    }
   }
 
   // MCP Streamable HTTP endpoint (JSON-RPC over HTTP POST)

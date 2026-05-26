@@ -10,7 +10,7 @@
 - **Dual protocol**: MCP (stdio + SSE + Streamable HTTP) and HTTP REST API — works with Claude Code, Cursor, VS Code, **n8n MCP Client**, or raw cURL
 - **Anti-detection**: 7-layer stealth patches (WebDriver, plugins, WebGL, Canvas, permissions, Chrome API, languages) — behaves like a real human browser
 - **Playwright engine**: Cross-browser Chromium automation with persistent contexts and real CDP keystrokes
-- **46+ tools**: Navigation, clicking, form filling, keyboard input, screenshots, cookies (including raw header string format), scraping, crawling, tab management, JS evaluation, overlay dismissal, element monitoring
+- **34 tools**: Navigation, clicking, form filling, keyboard input, screenshots, cookies (including raw header string format), scraping, crawling, tab management, JS evaluation, overlay dismissal, element monitoring
 - **WebMCP bridge**: Discover and invoke Google's WebMCP tools on Chrome 146+ pages
 - **Cookie persistence**: Export/import sessions, raw header string parsing, survive container restarts and browser crashes (auto-replay on crash recovery)
 - **n8n-ready**: SSE + Streamable HTTP transports, persistent browser context across multi-step workflows
@@ -180,7 +180,8 @@ curl -X POST -H "Authorization: Bearer wbr_your-key" \
 
 # Dismiss cookie banners
 curl -H "Authorization: Bearer wbr_your-key" \
-  -X POST http://localhost:3456/dismiss
+  -X POST http://localhost:3456/dismiss_overlays
+# (alias: POST /dismiss)
 
 # Execute JavaScript
 curl -H "Authorization: Bearer wbr_your-key" \
