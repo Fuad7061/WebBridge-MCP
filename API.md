@@ -311,6 +311,15 @@ curl -X POST http://localhost:3456/webmcp_call \
   -d '{"tool":"search_location","args":{"location":"New York"}}'
 ```
 
+## Workflow Guide
+
+Returns the complete workflow generation guide with step-by-step patterns for auth+scrape, search+extract, login+fill, multi-tab, crawl, recon-to-curl mapping, selector formats, and error handling.
+
+```bash
+curl -X POST http://localhost:3456/workflow_guide \
+  -H "Authorization: Bearer wbr_key"
+```
+
 ## MCP Endpoint (Streamable HTTP)
 
 ```bash

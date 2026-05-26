@@ -181,6 +181,7 @@ Step 7: (Optional) Take Screenshot
 - **Data mapping**: n8n can map output data from one tool call as input to the next (e.g. use `$json.data[0].text` from `browser_get_text`)
 - **Screenshots**: The `browser_screenshot` tool returns base64 image data that can be used in n8n's binary data processing
 - **Rate limiting**: Default is 60 req/min — increase via `WEBBRIDGE_RATE_LIMIT_MAX` env var if needed
+- **Workflow guide**: Call `browser_workflow_guide` via MCP (or `POST /workflow_guide` via REST) to get complete step-by-step patterns for auth+scrape, search+extract, login+fill, multi-tab, and crawl workflows with recon-to-curl mapping
 
 ## Troubleshooting
 
