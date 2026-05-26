@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 export const webmcpTools: ToolDefinition[] = [
   {
     name: 'webmcp_discover',
-    description: 'Discover WebMCP tools registered on the current page via navigator.modelContext',
+    description: 'Discover WebMCP (Google\'s Model Context Protocol for web) tools registered on the current page. Requires Chrome 146+ with --enable-experimental-web-platform-features flag. Returns a list of tool names, descriptions, and input schemas available through navigator.modelContext. Optionally navigate to a URL first to discover tools on that page.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -40,7 +40,7 @@ export const webmcpTools: ToolDefinition[] = [
   },
   {
     name: 'webmcp_call',
-    description: 'Call a WebMCP tool on the current page',
+    description: 'Invoke a WebMCP tool (discovered via webmcp_discover) on the current page. Pass the tool name and its arguments as an object. The tool executes directly in the page context via navigator.modelContext.executeTool or navigator.modelContextTesting.executeTool. Much more reliable than attempting to click/interact with WebMCP UI elements.',
     inputSchema: {
       type: 'object',
       properties: {

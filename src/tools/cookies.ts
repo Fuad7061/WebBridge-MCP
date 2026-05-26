@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 export const cookieTools: ToolDefinition[] = [
   {
     name: 'browser_cookies',
-    description: 'Get or set cookies in the browser context',
+    description: 'Manage browser cookies. Actions: "get" — read all cookies (name, value, domain, path, secure, httpOnly, sameSite); "set" — set a single cookie by name, value, url/domain, and path; "clear" — delete all cookies. Cookies set through this tool are automatically persisted in-memory and will survive browser crashes.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -53,7 +53,7 @@ export const cookieTools: ToolDefinition[] = [
   },
   {
     name: 'browser_cookies_export',
-    description: 'Export all cookies as a portable JSON blob',
+    description: 'Export all current cookies as a JSON array. The output can be saved and reused later with browser_cookies_import. Also stores the cookies in the session store for later retrieval in the same session.',
     inputSchema: { type: 'object', properties: {} },
     handler: async (_args, ctx) => {
       const { context } = await ctx.browser.acquireContext();
@@ -68,7 +68,7 @@ export const cookieTools: ToolDefinition[] = [
   },
   {
     name: 'browser_cookies_import',
-    description: 'Import cookies from a portable JSON blob',
+    description: 'Import cookies from a JSON array (typically obtained from browser_cookies_export). Restores the session state previously saved. Cookies are also persisted in-memory for crash recovery.',
     inputSchema: {
       type: 'object',
       properties: {

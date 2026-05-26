@@ -2,7 +2,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 
 export const evaluateTool: ToolDefinition = {
   name: 'browser_evaluate',
-  description: 'Execute arbitrary JavaScript in the page context',
+  description: 'Execute arbitrary JavaScript code in the browser page context and get the return value. Returns serialized results (objects become JSON, primitives become strings). Useful for: reading data from JavaScript variables, triggering functions not exposed via UI, accessing localStorage/sessionStorage, modifying page state, or extracting data that is not visible in the DOM.',
   inputSchema: {
     type: 'object',
     properties: {

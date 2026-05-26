@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 export const clickTools: ToolDefinition[] = [
   {
     name: 'browser_click',
-    description: 'Click an element by CSS selector, text content, or coordinates',
+    description: 'Click an element using one of three methods: (1) CSS selector — precise, use the exact selector from recon output; (2) text content — fuzzy-match any element containing the text (best for buttons/links with visible labels); (3) x/y coordinates — pixel-precise click anywhere on the page. Add human-like behavior with hover + small random delay.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -55,7 +55,7 @@ export const clickTools: ToolDefinition[] = [
   },
   {
     name: 'browser_scroll_to_element',
-    description: 'Scroll to bring an element into view',
+    description: 'Scroll the page until the specified element is visible in the viewport. Use this before browser_click or browser_screenshot if the element is off-screen. Accepts a CSS selector or text content to locate the element.',
     inputSchema: {
       type: 'object',
       properties: {

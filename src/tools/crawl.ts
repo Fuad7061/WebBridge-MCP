@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult, CrawlOptions } from '../t
 export const crawlTools: ToolDefinition[] = [
   {
     name: 'browser_crawl',
-    description: 'BFS crawl a website starting from a URL, extracting links and optionally content',
+    description: 'Crawl a website using breadth-first search starting from a URL. Discovers links and recursively follows them up to maxDepth and maxPages. Optionally extracts page text content (extractContent: true). Use include/exclude patterns (regex strings) to filter which URLs to follow. Returns a structured result with each page URL, title, depth, discovered links, and content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -79,7 +79,7 @@ export const crawlTools: ToolDefinition[] = [
   },
   {
     name: 'browser_map',
-    description: 'Quick URL/sitemap discovery without full content extraction',
+    description: 'Quickly map a website\'s URL structure by visiting a starting page and collecting all linked URLs. Unlike browser_crawl, this does NOT follow links recursively — it only extracts links from the single starting page. Useful for getting a quick sitemap or discovering all pages on a site section.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult, ReconResult } from '../ty
 export const extractTools: ToolDefinition[] = [
   {
     name: 'browser_get_text',
-    description: 'Get visible text from the page or a specific element',
+    description: 'Extract visible text content from the page. If a CSS selector is provided, only the text within that element is returned. If no selector is given, the full page text is returned. Use this for scraping article content, search results, prices, or any visible text data.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -28,7 +28,7 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'browser_get_html',
-    description: 'Get the HTML content of the page or a specific element',
+    description: 'Get the raw HTML source of the page or a specific element (with CSS selector). Returns the outerHTML including tags, attributes, and structure. Use this when you need to inspect the DOM structure, extract hidden data, or scrape content that includes formatting that innerText loses.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -53,7 +53,7 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'browser_get_url',
-    description: 'Get the current URL of the page',
+    description: 'Get the full URL of the currently active page. Use this to verify the current location after navigation, form submission, or redirects.',
     inputSchema: { type: 'object', properties: {} },
     handler: async (_args, ctx) => {
       const { page } = await ctx.browser.acquireContext();
@@ -67,7 +67,7 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'browser_get_title',
-    description: 'Get the page title',
+    description: 'Get the <title> of the current page. Useful for verifying the correct page loaded after navigation, or for identifying pages in multi-tab workflows.',
     inputSchema: { type: 'object', properties: {} },
     handler: async (_args, ctx) => {
       const { page } = await ctx.browser.acquireContext();
@@ -81,7 +81,7 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'browser_find_elements',
-    description: 'Find all elements matching a CSS selector',
+    description: 'Find and return a list of all elements matching a CSS selector. Returns each element\'s tag name, id, class name, visible text, href (for links), and value (for inputs). Limited to 50 elements. Use this when you need to discover what elements exist on a page without loading full page content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -113,7 +113,7 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'recon',
-    description: 'Get a structured reconnaissance map of the page',
+    description: 'Perform a full structured reconnaissance scan of the current page. Returns: URL, title, meta tags, headings (h1-h6), all interactive elements with CSS selectors (buttons, links, inputs), form structure with fields, overlay/cookie banners, captcha detection, and a content summary. Use this as the first step after navigation to understand the page structure before interacting with elements. The output provides the exact selectors you need for browser_click, browser_type, browser_fill_form, and other tools.',
     inputSchema: {
       type: 'object',
       properties: {

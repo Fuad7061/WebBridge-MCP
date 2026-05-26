@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 export const formTools: ToolDefinition[] = [
   {
     name: 'browser_fill_form',
-    description: 'Fill multiple form fields at once using label/name/id matching',
+    description: 'Fill multiple form fields at once by passing a key-value object. The tool automatically resolves each key as an element id, name attribute, placeholder text, or label text (in that order). Supports text inputs, textareas, and select dropdowns. Optionally submits the form after filling all fields. Example: {"fields":{"Email":"user@test.com","Password":"secret123","Country":"US"},"submit":true}',
     inputSchema: {
       type: 'object',
       properties: {
@@ -77,7 +77,7 @@ export const formTools: ToolDefinition[] = [
   },
   {
     name: 'browser_select',
-    description: 'Select an option from a dropdown by value or label text',
+    description: 'Select an option in a <select> dropdown element. Choose the target by the option\'s value attribute or its visible label text. Use this instead of browser_type or browser_click for native dropdowns. Example: {"selector":"select#country","label":"United States"} or {"selector":"select#country","value":"us"}.',
     inputSchema: {
       type: 'object',
       properties: {

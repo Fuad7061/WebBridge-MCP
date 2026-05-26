@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 export const tabTools: ToolDefinition[] = [
   {
     name: 'browser_list_tabs',
-    description: 'List all open tabs/pages in the current browser context',
+    description: 'List all open browser tabs with their index, URL, and page title. Use the index from this list to switch to or close a specific tab with browser_switch_tab or browser_close_tab.',
     inputSchema: { type: 'object', properties: {} },
     handler: async (_args, ctx) => {
       const { context } = await ctx.browser.acquireContext();
@@ -22,7 +22,7 @@ export const tabTools: ToolDefinition[] = [
   },
   {
     name: 'browser_new_tab',
-    description: 'Open a new tab (optionally navigate to a URL)',
+    description: 'Open a new browser tab. If a URL is provided, the new tab navigates to that URL. Use this to work with multiple pages simultaneously without losing state on the current page.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -44,7 +44,7 @@ export const tabTools: ToolDefinition[] = [
   },
   {
     name: 'browser_switch_tab',
-    description: 'Switch to a tab by index, URL, or title',
+    description: 'Switch to a different browser tab by its index number. Use browser_list_tabs first to see all tabs with their indices. After switching, all subsequent tool calls (click, type, screenshot, etc.) operate on the newly active tab.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -68,7 +68,7 @@ export const tabTools: ToolDefinition[] = [
   },
   {
     name: 'browser_close_tab',
-    description: 'Close a tab by index (default: current)',
+    description: 'Close a browser tab by its index number. Use browser_list_tabs to get the index first. Cannot close the last remaining tab. After closing, the next available tab becomes active automatically.',
     inputSchema: {
       type: 'object',
       properties: {

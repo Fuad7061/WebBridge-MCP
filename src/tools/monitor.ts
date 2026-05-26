@@ -2,7 +2,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 
 export const monitorTool: ToolDefinition = {
   name: 'surf_monitor',
-  description: 'Monitor a CSS selector and detect when its text content changes',
+  description: 'Monitor a specific element on the page by CSS selector and detect when its text content changes. Polls every `interval` ms (default 500) until the text changes or `timeout` ms (default 60000) is reached. Returns the previous and current text, and elapsed time. Use this to wait for dynamic content updates, live search results, loading spinners to complete, or chat messages to appear.',
   inputSchema: {
     type: 'object',
     properties: {

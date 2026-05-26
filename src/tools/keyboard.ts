@@ -2,7 +2,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 
 export const keyboardTool: ToolDefinition = {
   name: 'browser_press_key',
-  description: 'Press a keyboard key (Enter, Tab, Escape, ArrowDown, etc.)',
+  description: 'Press a single keyboard key. Common uses: Enter to submit forms or confirm dialogs; Tab to move focus between fields; Escape to close modals/popups; ArrowDown/ArrowUp to navigate dropdown menus or autocomplete suggestions; Space to toggle checkboxes; Backspace/Delete to remove characters. The optional delay parameter adds human-like pause between keydown and keyup events. Note: the element must already be focused — use browser_click first to focus a field, or Tab to navigate focus.',
   inputSchema: {
     type: 'object',
     properties: {

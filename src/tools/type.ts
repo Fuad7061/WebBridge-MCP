@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 export const typeTools: ToolDefinition[] = [
   {
     name: 'browser_type',
-    description: 'Type text into an input field',
+    description: 'Type text into an input field identified by CSS selector. Two modes: action "fill" (default) — clears existing content (unless clear:false) and sets the value instantly via Playwright fill(); action "type" — types each character individually with configurable delay (human-like keystrokes). Accepts "text" or "value" as the input parameter name. Set submit:true to press Enter after typing (useful for search fields and forms). Requires the selector to match an input, textarea, or contenteditable element.',
     inputSchema: {
       type: 'object',
       properties: {

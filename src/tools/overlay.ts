@@ -17,7 +17,7 @@ const DISMISS_PATTERNS = [
 export const overlayTools: ToolDefinition[] = [
   {
     name: 'browser_dismiss_overlays',
-    description: 'Dismiss cookie consent banners, modals, and popup overlays',
+    description: 'Automatically detect and dismiss cookie consent banners, modal dialogs, and popup overlays that may block interaction with the page. Searches for common dismiss buttons by text (Reject, Accept, Close, etc.) in multiple languages (EN, DE, FR, ES, IT, NO) and by ARIA labels. Attempts up to 3 dismissals. Use this right after browser_navigate to clear the page for interaction.',
     inputSchema: {
       type: 'object',
       properties: {

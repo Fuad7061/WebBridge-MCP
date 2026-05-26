@@ -3,7 +3,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 export const scrollTools: ToolDefinition[] = [
   {
     name: 'browser_scroll',
-    description: 'Scroll the page up or down by a given amount, or to top/bottom',
+    description: 'Scroll the page by a number of pixels (positive = down, negative = up). Returns the current scroll position, total scroll height, viewport height, and whether the bottom of the page is reached. Use negative values like -9999 to scroll to top quickly.',
     inputSchema: {
       type: 'object',
       properties: {

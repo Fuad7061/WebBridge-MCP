@@ -2,7 +2,7 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 
 export const waitTool: ToolDefinition = {
   name: 'browser_wait',
-  description: 'Wait for a CSS selector or a timeout (ms)',
+  description: 'Wait for either (1) a CSS selector to become visible on the page (waits up to timeout ms), or (2) a fixed number of milliseconds to pass (when using the ms parameter with no selector). Use selector-based waiting after navigation or clicks to ensure elements are ready before interacting. Use ms-based waiting for simple delays like waiting for animations, redirects, or AJAX updates.',
   inputSchema: {
     type: 'object',
     properties: {
