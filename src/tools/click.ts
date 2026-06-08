@@ -13,10 +13,13 @@ export const clickTools: ToolDefinition[] = [
         y: { type: 'number', description: 'Y coordinate for click' },
         waitAfter: { type: 'number', default: 500 },
         tabIndex: { type: 'number', description: 'Tab index to click in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to click in (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
 
@@ -63,10 +66,13 @@ export const clickTools: ToolDefinition[] = [
         selector: { type: 'string', description: 'CSS selector of element to scroll to' },
         text: { type: 'string', description: 'Text content of element to scroll to' },
         tabIndex: { type: 'number', description: 'Tab index to scroll in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to scroll in (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         if (args.selector) {

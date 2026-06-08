@@ -14,11 +14,14 @@ export const formTools: ToolDefinition[] = [
         },
         submit: { type: 'boolean', default: false, description: 'Submit the form after filling' },
         tabIndex: { type: 'number', description: 'Tab index to fill form in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to fill form in (overrides tabIndex)' },
       },
       required: ['fields'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         const fields = args.fields as Record<string, string>;
@@ -86,11 +89,14 @@ export const formTools: ToolDefinition[] = [
         value: { type: 'string', description: 'Option value to select' },
         label: { type: 'string', description: 'Option label text to select' },
         tabIndex: { type: 'number', description: 'Tab index to select in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to select in (overrides tabIndex)' },
       },
       required: ['selector'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         const locator = page.locator(String(args.selector));

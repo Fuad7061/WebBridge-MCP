@@ -9,10 +9,13 @@ export const screenshotTool: ToolDefinition = {
         selector: { type: 'string', description: 'CSS selector of element to capture (omit for full page)' },
         fullPage: { type: 'boolean', default: false, description: 'Capture full page (not just viewport)' },
         tabIndex: { type: 'number', description: 'Tab index to screenshot (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to screenshot (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
     try {
       
 

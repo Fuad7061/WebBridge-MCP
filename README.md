@@ -329,46 +329,88 @@ Each tool operates on the **currently active tab** by default. In a single-threa
 3. `POST /navigate` → loads URL B (same tab, old page replaced)
 4. `POST /type` → types on URL B's page
 
-### Multi-tab workflows with tabIndex
+### Multi-tab workflows with tabName (recommended)
 
-Every page-operating tool supports an optional **`tabIndex`** parameter. This lets you target a specific tab without first calling `switch_tab`:
+Instead of tracking fragile positional indices, give your tabs **friendly names** and target them directly:
 
 ```bash
-# Open and navigate in tab 0
-curl -X POST http://localhost:3456/navigate \
-  -H "Authorization: Bearer wbr_key" \
-  -d '{"url":"https://site-a.com","tabIndex":0}'
-
-# Open and navigate in tab 1
+# Step 1: Open tabs with names
 curl -X POST http://localhost:3456/new_tab \
-  -H "Authorization: Bearer wbr_key"
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"url":"https://amazon.com","name":"amazon"}'
+
+curl -X POST http://localhost:3456/new_tab \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"url":"https://admin.example.com","name":"admin"}'
+
+# Step 2: Navigate in a named tab (no index needed)
 curl -X POST http://localhost:3456/navigate \
   -H "Authorization: Bearer wbr_key" \
-  -d '{"url":"https://site-b.com","tabIndex":1}'
+  -d '{"url":"https://amazon.com/dashboard","tabName":"amazon"}'
 
-# Type in tab 1 while tab 0 stays on site-a.com
+# Step 3: Click, type, extract in the named tab
+curl -X POST http://localhost:3456/click \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"selector":"#search","tabName":"amazon"}'
+
 curl -X POST http://localhost:3456/type \
   -H "Authorization: Bearer wbr_key" \
-  -d '{"selector":"#search","text":"hello","tabIndex":1}'
+  -d '{"selector":"#search","text":"laptop","tabName":"amazon"}'
 
-# Screenshot tab 0 — still has site-a.com loaded
-curl -X POST http://localhost:3456/screenshot \
+curl -X POST http://localhost:3456/get_title \
   -H "Authorization: Bearer wbr_key" \
-  -d '{"tabIndex":0}'
+  -d '{"tabName":"admin"}'  # Different tab, untouched
+
+# Step 4: Name the current active tab later
+curl -X POST http://localhost:3456/set_tab_name \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"name":"dashboard"}'
+
+# Or name a specific tab by index
+curl -X POST http://localhost:3456/set_tab_name \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"name":"results","index":2}'
 ```
 
-**Tools that accept `tabIndex`:**
+**Available tools for tab naming:**
+- `browser_new_tab` with `name` param — name on creation
+- `browser_set_tab_name` — name the current or specified tab
+- `browser_switch_tab` with `name` param — switch to a named tab
+
+**All these tools accept `tabName`** (overrides `tabIndex` if both are provided):
 - Navigation: `navigate`, `back`, `forward`, `reload`
 - Interaction: `click`, `type`, `fill_form`, `select`, `press_key`, `scroll`, `scroll_to_element`
 - Extraction: `get_text`, `get_html`, `get_url`, `get_title`, `find_elements`, `recon`, `screenshot`
 - Page control: `wait`, `dismiss_overlays`, `evaluate`, `monitor`
 - WebMCP: `webmcp_discover`, `webmcp_call`
 
-**Tools that DON'T need tabIndex** (operate on context, not page): `cookies`, `cookies_export`, `cookies_import`, `cookies_from_header`, `list_tabs`, `new_tab`, `switch_tab`, `close_tab`, `crawl`, `map`, `workflow_guide`.
+**Tools that DON'T accept tabName/tabIndex** (operate on context, not page): `cookies`, `cookies_export`, `cookies_import`, `cookies_from_header`, `list_tabs`, `new_tab` (has its own `name`), `switch_tab` (has its own `name`), `close_tab`, `crawl`, `map`, `workflow_guide`.
 
-> With the mutex + tabIndex, you can safely run multi-tab workflows where operations on different tabs never interfere with each other, even under concurrent requests.
+> **How it works:** `tabName` uses an in-memory registry (`Map<string, Page>`) on the server. When you name a tab, the server stores the reference and auto-removes it when the tab is closed. Tab names survive browser crashes as long as the server process stays alive. The mutex ensures concurrent operation — you can safely send `click` on "amazon" and `type` on "admin" in parallel without race conditions.
+
+### Multi-tab workflows with tabIndex (fallback)
+
+`tabIndex` still works as a positional alternative. Use it when you haven't named your tabs:
+
+```bash
+# Navigate in tab 0, type in tab 1
+curl -X POST http://localhost:3456/navigate \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"url":"https://site-a.com","tabIndex":0}'
+curl -X POST http://localhost:3456/type \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"selector":"#search","text":"hello","tabIndex":1}'
+```
+
+> The mutex ensures all operations are serialized, so `tabIndex` based targeting is safe even under concurrent requests — each request atomically resolves its target tab and executes.
 
 ## Tool Parameter Reference
+
+> All page-operating tools accept two optional targeting parameters:
+> - **`tabIndex`** (`number`) — operate on a specific tab by its positional index
+> - **`tabName`** (`string`) — operate on a named tab (overrides `tabIndex` if both provided)
+>
+> See the [Concurrency & Tab Targeting](#concurrency--tab-targeting) section above for detailed usage.
 
 ### Navigation
 
@@ -379,11 +421,23 @@ curl -X POST http://localhost:3456/screenshot \
 | `waitUntil` | string | — | `load` | When to consider navigation done: `load`, `domcontentloaded`, or `networkidle` |
 | `timeout` | number | — | `30000` | Navigation timeout in ms |
 
-**`browser_back`** — No parameters. Goes back one page in history.
+**`browser_back`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `tabIndex` | number | — | — | Tab index to go back in |
+| `tabName` | string | — | — | Tab name to go back in (overrides tabIndex) |
 
-**`browser_forward`** — No parameters. Goes forward one page in history.
+**`browser_forward`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `tabIndex` | number | — | — | Tab index to go forward in |
+| `tabName` | string | — | — | Tab name to go forward in (overrides tabIndex) |
 
-**`browser_reload`** — No parameters. Reloads the current page.
+**`browser_reload`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `tabIndex` | number | — | — | Tab index to reload |
+| `tabName` | string | — | — | Tab name to reload (overrides tabIndex) |
 
 ### Clicking & Scrolling
 
@@ -457,16 +511,24 @@ curl -X POST http://localhost:3456/screenshot \
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `url` | string | — | — | URL to open in the new tab |
+| `name` | string | — | — | Friendly name for the tab (e.g. `"amazon"`) — enables tabName targeting on any tool |
 
 **`browser_switch_tab`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `index` | number | ✅ | — | Tab index to switch to (0-based) |
+| `index` | number | — | — | Tab index to switch to (0-based) |
+| `name` | string | — | — | Switch to tab by its friendly name |
 
 **`browser_close_tab`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `index` | number | ✅ | — | Tab index to close (0-based) |
+
+**`browser_set_tab_name`**
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `name` | string | ✅ | — | Friendly name to assign (e.g. `"dashboard"`, `"search-results"`) |
+| `index` | number | — | — | Tab index to name (defaults to active tab) |
 
 ### Cookies
 

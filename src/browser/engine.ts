@@ -24,6 +24,24 @@ export function createBrowserManager(config: AppConfig) {
     });
   }
 
+  // ── Tab name registry (name → Page mapping) ────────────────────
+  let _tabNames = new Map<string, Page>();
+
+  function setTabName(name: string, page?: Page): void {
+    const target = page || _page;
+    if (!target) throw new Error('No page available to name');
+    if (_tabNames.has(name) && _tabNames.get(name) !== target) {
+      const old = _tabNames.get(name)!;
+      if (!old.isClosed()) old.off('close', undefined as any);
+    }
+    _tabNames.set(name, target);
+    target.on('close', () => {
+      for (const [n, p] of _tabNames) {
+        if (p === target) { _tabNames.delete(n); break; }
+      }
+    });
+  }
+
   // ── Persistent cookie store (survives browser restarts) ──────────
   let _storedCookies: any[] = [];
 
@@ -84,6 +102,7 @@ export function createBrowserManager(config: AppConfig) {
         _context = null;
         _page = null;
         _browser = null;
+        _tabNames.clear();
       });
     }
     return _browser;
@@ -110,7 +129,7 @@ export function createBrowserManager(config: AppConfig) {
     return _context;
   }
 
-  async function acquireContext(tabIndex?: number): Promise<{ context: BrowserContext; page: Page }> {
+  async function acquireContext(tabIndex?: number, tabName?: string): Promise<{ context: BrowserContext; page: Page }> {
     if (closing) throw new Error('Browser is shutting down');
 
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -125,8 +144,15 @@ export function createBrowserManager(config: AppConfig) {
           await replayStoredCookies(context);
         }
 
-        // If a specific tab was requested, resolve it and set as active
-        if (tabIndex !== undefined) {
+        // Resolve by name first (most specific), then by index, else active tab
+        if (tabName !== undefined) {
+          const named = _tabNames.get(tabName);
+          if (!named || named.isClosed()) {
+            throw new Error(`No open tab found with name "${tabName}"`);
+          }
+          _page = named;
+          await _page.bringToFront();
+        } else if (tabIndex !== undefined) {
           const pages = context.pages();
           if (tabIndex < 0 || tabIndex >= pages.length) {
             throw new Error(`Tab index ${tabIndex} out of range (0-${pages.length - 1})`);
@@ -194,7 +220,7 @@ export function createBrowserManager(config: AppConfig) {
     return enqueue(fn);
   }
 
-  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages };
+  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages, setTabName };
 }
 
 export type BrowserManager = ReturnType<typeof createBrowserManager>;

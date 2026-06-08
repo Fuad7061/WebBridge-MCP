@@ -11,6 +11,7 @@ export const navigationTools: ToolDefinition[] = [
         waitUntil: { type: 'string', enum: ['load', 'domcontentloaded', 'networkidle'], default: 'load' },
         timeout: { type: 'number', default: 30000 },
         tabIndex: { type: 'number', description: 'Tab index to navigate in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to navigate in (overrides tabIndex)' },
       },
       required: ['url'],
     },
@@ -19,7 +20,9 @@ export const navigationTools: ToolDefinition[] = [
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return { content: [{ type: 'text', text: 'Only http/https URLs are allowed' }], isError: true };
       }
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         await page.goto(url, {
@@ -39,10 +42,13 @@ export const navigationTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         tabIndex: { type: 'number', description: 'Tab index to go back in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to go back in (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         await page.goBack({ waitUntil: 'load' });
@@ -59,10 +65,13 @@ export const navigationTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         tabIndex: { type: 'number', description: 'Tab index to go forward in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to go forward in (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         await page.goForward({ waitUntil: 'load' });
@@ -79,10 +88,13 @@ export const navigationTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         tabIndex: { type: 'number', description: 'Tab index to reload (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to reload (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         await page.reload({ waitUntil: 'load' });

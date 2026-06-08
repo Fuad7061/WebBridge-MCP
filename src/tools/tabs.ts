@@ -22,19 +22,24 @@ export const tabTools: ToolDefinition[] = [
   },
   {
     name: 'browser_new_tab',
-    description: 'Open a new browser tab. If a URL is provided, the new tab navigates to that URL. Use this to work with multiple pages simultaneously without losing state on the current page.',
+    description: 'Open a new browser tab and optionally name it. If a URL is provided, the new tab navigates to that URL. If a name is provided, you can target this tab later with any tool\'s tabName parameter — no need to track indices.',
     inputSchema: {
       type: 'object',
       properties: {
         url: { type: 'string', description: 'URL to open in the new tab' },
+        name: { type: 'string', description: 'Optional friendly name for this tab (e.g. "amazon", "admin") — use with tabName on any tool' },
       },
     },
     handler: async (args, ctx) => {
-      const { context } = await ctx.browser.acquireContext();
+      const { context, page: _activePage } = await ctx.browser.acquireContext();
       try {
         const newPage = await context.newPage();
         if (args.url) {
           await newPage.goto(String(args.url), { waitUntil: 'load' });
+        }
+        if (args.name) {
+          ctx.browser.setTabName(String(args.name), newPage);
+          return { content: [{ type: 'text', text: `Opened new tab "${args.name}": ${newPage.url()}` }] };
         }
         return { content: [{ type: 'text', text: `Opened new tab: ${newPage.url()}` }] };
       } finally {
@@ -44,23 +49,25 @@ export const tabTools: ToolDefinition[] = [
   },
   {
     name: 'browser_switch_tab',
-    description: 'Switch to a different browser tab by its index number. Use browser_list_tabs first to see all tabs with their indices. After switching, all subsequent tool calls (click, type, screenshot, etc.) operate on the newly active tab.',
+    description: 'Switch to a different browser tab by its index or name. Use browser_list_tabs to see all tabs with their indices. After switching, all subsequent tool calls (click, type, screenshot, etc.) operate on the newly active tab.',
     inputSchema: {
       type: 'object',
       properties: {
         index: { type: 'number', description: 'Tab index to switch to' },
+        name: { type: 'string', description: 'Switch to tab by its friendly name (set via set_tab_name or new_tab name)' },
       },
     },
     handler: async (args, ctx) => {
-      const { context } = await ctx.browser.acquireContext();
       try {
-        const pages = context.pages();
-        const idx = Number(args.index);
-        if (idx < 0 || idx >= pages.length) {
-          return { content: [{ type: 'text', text: `Tab index ${idx} out of range (0-${pages.length - 1})` }], isError: true };
+        if (args.name !== undefined) {
+          const { page } = await ctx.browser.acquireContext(undefined, String(args.name));
+          return { content: [{ type: 'text', text: `Switched to tab "${args.name}": ${page.url()}` }] };
         }
-        await pages[idx].bringToFront();
-        return { content: [{ type: 'text', text: `Switched to tab ${idx}: ${pages[idx].url()}` }] };
+        if (args.index !== undefined) {
+          const { page } = await ctx.browser.acquireContext(Number(args.index));
+          return { content: [{ type: 'text', text: `Switched to tab ${args.index}: ${page.url()}` }] };
+        }
+        return { content: [{ type: 'text', text: 'Provide index or name' }], isError: true };
       } finally {
         await ctx.browser.releaseContext();
       }
@@ -88,6 +95,28 @@ export const tabTools: ToolDefinition[] = [
         }
         await pages[idx].close();
         return { content: [{ type: 'text', text: `Closed tab ${idx}` }] };
+      } finally {
+        await ctx.browser.releaseContext();
+      }
+    },
+  },
+  {
+    name: 'browser_set_tab_name',
+    description: 'Assign a friendly name to a browser tab so you can target it with any tool\'s tabName parameter instead of tracking positional indices. If no index is specified, the current active tab is named. Names persist until the tab is closed. Example: set_tab_name name="amazon" → later use navigate tabName="amazon" or click tabName="amazon".',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Friendly name to assign (e.g. "amazon", "admin-panel", "search-results")' },
+        index: { type: 'number', description: 'Tab index to name (optional, defaults to active tab)' },
+      },
+      required: ['name'],
+    },
+    handler: async (args, ctx) => {
+      const tabIndex = args.index !== undefined ? Number(args.index) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex);
+      try {
+        ctx.browser.setTabName(String(args.name), page);
+        return { content: [{ type: 'text', text: `Tab named "${args.name}" (URL: ${page.url()})` }] };
       } finally {
         await ctx.browser.releaseContext();
       }

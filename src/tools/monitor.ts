@@ -10,11 +10,14 @@ export const monitorTool: ToolDefinition = {
       timeout: { type: 'number', default: 60000, description: 'Max monitoring time in ms' },
       interval: { type: 'number', default: 500, description: 'Poll interval in ms' },
       tabIndex: { type: 'number', description: 'Tab index to monitor (default: active tab)' },
+      tabName: { type: 'string', description: 'Tab name to monitor (overrides tabIndex)' },
     },
     required: ['selector'],
   },
   handler: async (args, ctx) => {
-    const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+    const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+    const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+    const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
     try {
       
       const selector = String(args.selector);

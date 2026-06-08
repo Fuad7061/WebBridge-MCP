@@ -8,11 +8,14 @@ export const evaluateTool: ToolDefinition = {
       properties: {
         code: { type: 'string', description: 'JavaScript code to execute' },
         tabIndex: { type: 'number', description: 'Tab index to evaluate in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to evaluate in (overrides tabIndex)' },
       },
       required: ['code'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
     try {
       
       const code = String(args.code);

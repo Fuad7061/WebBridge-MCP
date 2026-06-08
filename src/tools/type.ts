@@ -15,11 +15,14 @@ export const typeTools: ToolDefinition[] = [
         clear: { type: 'boolean', default: true, description: 'Clear existing content first (only for action: fill)' },
         delay: { type: 'number', description: 'Delay between keystrokes in ms (for action: type)' },
         tabIndex: { type: 'number', description: 'Tab index to type in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to type in (overrides tabIndex)' },
       },
       required: ['selector'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         const inputText = String(args.text ?? args.value ?? '');
         if (!inputText) {

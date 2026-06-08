@@ -9,10 +9,13 @@ export const webmcpTools: ToolDefinition[] = [
       properties: {
         url: { type: 'string', description: 'Navigate to URL first (optional)' },
         tabIndex: { type: 'number', description: 'Tab index to discover in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to discover in (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         if (args.url && typeof args.url === 'string') {
@@ -48,11 +51,14 @@ export const webmcpTools: ToolDefinition[] = [
         tool: { type: 'string', description: 'Name of the WebMCP tool to call' },
         args: { type: 'object', description: 'Arguments to pass to the tool' },
         tabIndex: { type: 'number', description: 'Tab index to call WebMCP in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to call WebMCP in (overrides tabIndex)' },
       },
       required: ['tool'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         const toolName = String(args.tool);

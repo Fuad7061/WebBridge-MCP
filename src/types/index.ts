@@ -23,7 +23,7 @@ export interface ToolResult {
 }
 
 export interface BrowserManager {
-  acquireContext(tabIndex?: number): Promise<{ context: BrowserContext; page: Page }>;
+  acquireContext(tabIndex?: number, tabName?: string): Promise<{ context: BrowserContext; page: Page }>;
   releaseContext(): Promise<void>;
   getPage(): Promise<Page>;
   close(): Promise<void>;
@@ -32,6 +32,7 @@ export interface BrowserManager {
   clearStoredCookies(): void;
   runLocked<T>(fn: () => Promise<T>): Promise<T>;
   pages(): Promise<Page[]>;
+  setTabName(name: string, page?: Page): void;
 }
 
 export interface SessionStore {

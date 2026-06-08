@@ -9,10 +9,13 @@ export const extractTools: ToolDefinition[] = [
       properties: {
         selector: { type: 'string', description: 'CSS selector to scope text extraction' },
         tabIndex: { type: 'number', description: 'Tab index to extract from (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to extract from (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         let text: string;
@@ -35,10 +38,13 @@ export const extractTools: ToolDefinition[] = [
       properties: {
         selector: { type: 'string', description: 'CSS selector to scope HTML extraction' },
         tabIndex: { type: 'number', description: 'Tab index to extract from (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to extract from (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         let html: string;
@@ -60,10 +66,13 @@ export const extractTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         tabIndex: { type: 'number', description: 'Tab index to get URL from (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to get URL from (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         return { content: [{ type: 'text', text: page.url() }] };
@@ -79,10 +88,13 @@ export const extractTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         tabIndex: { type: 'number', description: 'Tab index to get title from (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to get title from (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         return { content: [{ type: 'text', text: await page.title() }] };
@@ -99,11 +111,14 @@ export const extractTools: ToolDefinition[] = [
       properties: {
         selector: { type: 'string', description: 'CSS selector to search for' },
         tabIndex: { type: 'number', description: 'Tab index to search in (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to search in (overrides tabIndex)' },
       },
       required: ['selector'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         const elements = await page.evaluate((sel: string) => {
@@ -132,10 +147,13 @@ export const extractTools: ToolDefinition[] = [
       properties: {
         url: { type: 'string', description: 'URL to recon (optional, uses current page if omitted)' },
         tabIndex: { type: 'number', description: 'Tab index to recon (default: active tab)' },
+        tabName: { type: 'string', description: 'Tab name to recon (overrides tabIndex)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
+      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
         if (args.url && typeof args.url === 'string') {
