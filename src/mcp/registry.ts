@@ -25,7 +25,7 @@ export function createToolRegistry(ctx: ToolContext) {
         };
       }
       try {
-        return await tool.handler(args, ctx);
+        return await ctx.browser.runLocked(() => tool.handler(args, ctx));
       } catch (err) {
         return {
           content: [{ type: 'text' as const, text: `Error executing ${name}: ${err instanceof Error ? err.message : String(err)}` }],

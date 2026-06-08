@@ -218,6 +218,156 @@ curl -X POST http://localhost:3456/cookies_from_header \
   }'
 ```
 
+## MCP Endpoints
+
+The MCP endpoints let you interact with WebBridge using the Model Context Protocol (JSON-RPC 2.0). They are used by n8n MCP Client, Claude Code, Cursor, and any MCP-compatible client.
+
+### GET /tools — List all tools
+
+Returns every registered MCP tool with its name, description, and JSON input schema. Use this to discover available capabilities programmatically.
+
+```bash
+curl http://localhost:3456/tools \
+  -H "Authorization: Bearer wbr_your-key"
+
+# Returns: { tools: [{ name, description, inputSchema }, ...] }
+```
+
+### POST /tools/:name — Call a tool by MCP name
+
+Call any MCP tool directly via HTTP using its full MCP name (e.g. `browser_navigate`, `browser_cookies_from_header`).
+
+```bash
+curl -X POST http://localhost:3456/tools/browser_navigate \
+  -H "Authorization: Bearer wbr_your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}'
+```
+
+### POST /mcp — Streamable HTTP (JSON-RPC)
+
+Accepts standard JSON-RPC 2.0 requests. Supports `initialize`, `ping`, `tools/list`, and `tools/call` methods.
+
+```bash
+# Initialize session
+curl -X POST http://localhost:3456/mcp \
+  -H "Authorization: Bearer wbr_your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"initialize","id":1}'
+# Returns: { jsonrpc: "2.0", id: 1, result: { protocolVersion, capabilities, serverInfo } }
+
+# List tools
+curl -X POST http://localhost:3456/mcp \
+  -H "Authorization: Bearer wbr_your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":2}'
+
+# Call a tool
+curl -X POST http://localhost:3456/mcp \
+  -H "Authorization: Bearer wbr_your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/call","id":3,"params":{"name":"browser_navigate","arguments":{"url":"https://example.com"}}}'
+
+# Ping (keep-alive)
+curl -X POST http://localhost:3456/mcp \
+  -H "Authorization: Bearer wbr_your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"ping","id":4}'
+# Returns: { jsonrpc: "2.0", id: 4, result: {} }
+```
+
+### GET /sse — SSE Transport
+
+For clients that use Server-Sent Events (like n8n MCP Client with SSE transport). The flow is:
+
+1. **Client connects** to `GET /sse`
+2. **Server sends** an `endpoint` event with a session-specific POST URL
+3. **Client POSTs** JSON-RPC messages to `/mcp?sessionId=<id>`
+4. **Server responds** through the SSE stream
+
+```bash
+# Step 1: Connect to SSE (keep this connection open)
+curl -N http://localhost:3456/sse \
+  -H "Authorization: Bearer wbr_your-key"
+
+# Server sends:
+#   event: endpoint
+#   data: /mcp?sessionId=abc-123
+
+# Step 2: In another terminal, send JSON-RPC via the session URL
+curl -X POST "http://localhost:3456/mcp?sessionId=abc-123" \
+  -H "Authorization: Bearer wbr_your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+# Response is sent back through the SSE stream
+```
+
+This is the same endpoint n8n uses under the hood when you configure it with SSE transport. The server sends keep-alive pings every 30 seconds to maintain the connection.
+
+> **Note:** When using `POST /mcp` without a `sessionId` query parameter, responses are returned directly (Streamable HTTP mode). When `sessionId` is provided, responses are routed through the corresponding SSE stream.
+
+## Concurrency & Tab Targeting
+
+### How concurrent requests are handled
+
+All browser operations are **serialized through a global mutex** — concurrent requests to any tool (e.g. three simultaneous `POST /navigate` calls) are queued and executed one at a time. Each request waits for the previous one to finish before acquiring the shared browser page. This prevents races on the tab state.
+
+```text
+Request A ──→ [navigate to URL1] ──→ done
+Request B ──→ (waiting) ──→ [navigate to URL2] ──→ done
+Request C ──→ (waiting) ──→ (waiting) ──→ [navigate to URL3] ──→ done
+```
+
+The mutex covers all 35 tools, not just navigation. This means you can safely send multiple requests without worrying about interleaved state.
+
+### How targeting works: which page does a click/type act on?
+
+Each tool operates on the **currently active tab** by default. In a single-threaded (sequential) workflow this is straightforward:
+
+1. `POST /navigate` → loads URL A in the active tab
+2. `POST /click` → clicks on URL A's page
+3. `POST /navigate` → loads URL B (same tab, old page replaced)
+4. `POST /type` → types on URL B's page
+
+### Multi-tab workflows with tabIndex
+
+Every page-operating tool supports an optional **`tabIndex`** parameter. This lets you target a specific tab without first calling `switch_tab`:
+
+```bash
+# Open and navigate in tab 0
+curl -X POST http://localhost:3456/navigate \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"url":"https://site-a.com","tabIndex":0}'
+
+# Open and navigate in tab 1
+curl -X POST http://localhost:3456/new_tab \
+  -H "Authorization: Bearer wbr_key"
+curl -X POST http://localhost:3456/navigate \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"url":"https://site-b.com","tabIndex":1}'
+
+# Type in tab 1 while tab 0 stays on site-a.com
+curl -X POST http://localhost:3456/type \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"selector":"#search","text":"hello","tabIndex":1}'
+
+# Screenshot tab 0 — still has site-a.com loaded
+curl -X POST http://localhost:3456/screenshot \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"tabIndex":0}'
+```
+
+**Tools that accept `tabIndex`:**
+- Navigation: `navigate`, `back`, `forward`, `reload`
+- Interaction: `click`, `type`, `fill_form`, `select`, `press_key`, `scroll`, `scroll_to_element`
+- Extraction: `get_text`, `get_html`, `get_url`, `get_title`, `find_elements`, `recon`, `screenshot`
+- Page control: `wait`, `dismiss_overlays`, `evaluate`, `monitor`
+- WebMCP: `webmcp_discover`, `webmcp_call`
+
+**Tools that DON'T need tabIndex** (operate on context, not page): `cookies`, `cookies_export`, `cookies_import`, `cookies_from_header`, `list_tabs`, `new_tab`, `switch_tab`, `close_tab`, `crawl`, `map`, `workflow_guide`.
+
+> With the mutex + tabIndex, you can safely run multi-tab workflows where operations on different tabs never interfere with each other, even under concurrent requests.
+
 ## Tool Parameter Reference
 
 ### Navigation

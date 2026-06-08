@@ -23,13 +23,15 @@ export interface ToolResult {
 }
 
 export interface BrowserManager {
-  acquireContext(): Promise<{ context: BrowserContext; page: Page }>;
+  acquireContext(tabIndex?: number): Promise<{ context: BrowserContext; page: Page }>;
   releaseContext(): Promise<void>;
   getPage(): Promise<Page>;
   close(): Promise<void>;
   storeCookies(cookies: any[]): void;
   getStoredCookies(): any[];
   clearStoredCookies(): void;
+  runLocked<T>(fn: () => Promise<T>): Promise<T>;
+  pages(): Promise<Page[]>;
 }
 
 export interface SessionStore {

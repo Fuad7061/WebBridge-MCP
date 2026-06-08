@@ -22,10 +22,11 @@ export const overlayTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         method: { type: 'string', enum: ['auto', 'click', 'scroll'], default: 'auto' },
+        tabIndex: { type: 'number', description: 'Tab index to dismiss overlays in (default: active tab)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         const method = String(args.method || 'auto');

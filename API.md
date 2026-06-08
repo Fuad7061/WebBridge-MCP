@@ -320,18 +320,72 @@ curl -X POST http://localhost:3456/workflow_guide \
   -H "Authorization: Bearer wbr_key"
 ```
 
-## MCP Endpoint (Streamable HTTP)
+## GET /tools — List All Tools
+
+Returns every registered MCP tool with name, description, and JSON input schema. Useful for programmatic discovery.
 
 ```bash
+curl http://localhost:3456/tools \
+  -H "Authorization: Bearer wbr_key"
+```
+
+## POST /tools/:name — Call Tool by MCP Name
+
+Call any MCP tool directly via HTTP using its full MCP name.
+
+```bash
+curl -X POST http://localhost:3456/tools/browser_navigate \
+  -H "Authorization: Bearer wbr_key" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}'
+```
+
+## POST /mcp — Streamable HTTP (JSON-RPC)
+
+Accepts JSON-RPC 2.0. Supports `initialize`, `ping`, `tools/list`, `tools/call`.
+
+```bash
+# Initialize
+curl -X POST http://localhost:3456/mcp \
+  -H "Authorization: Bearer wbr_key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"initialize","id":1}'
+
 # List tools
 curl -X POST http://localhost:3456/mcp \
   -H "Authorization: Bearer wbr_key" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":2}'
 
 # Call a tool
 curl -X POST http://localhost:3456/mcp \
   -H "Authorization: Bearer wbr_key" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","id":2,"params":{"name":"browser_navigate","arguments":{"url":"https://example.com"}}}'
+  -d '{"jsonrpc":"2.0","method":"tools/call","id":3,"params":{"name":"browser_navigate","arguments":{"url":"https://example.com"}}}'
+
+# Ping
+curl -X POST http://localhost:3456/mcp \
+  -H "Authorization: Bearer wbr_key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"ping","id":4}'
+```
+
+## GET /sse — SSE Transport
+
+Server-Sent Events transport for n8n MCP Client and other SSE-compatible clients.
+
+1. Connect to `/sse` to receive a session-specific endpoint URL
+2. POST JSON-RPC messages to `/mcp?sessionId=<id>`
+3. Responses arrive through the SSE stream
+
+```bash
+# Step 1: Connect (keep this open)
+curl -N http://localhost:3456/sse \
+  -H "Authorization: Bearer wbr_key"
+
+# Step 2: Send JSON-RPC via session URL
+curl -X POST "http://localhost:3456/mcp?sessionId=<id-from-step-1>" \
+  -H "Authorization: Bearer wbr_key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```

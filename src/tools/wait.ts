@@ -9,10 +9,11 @@ export const waitTool: ToolDefinition = {
       selector: { type: 'string', description: 'CSS selector to wait for (omit for pure delay)' },
       timeout: { type: 'number', default: 30000, description: 'Max wait time in ms' },
       ms: { type: 'number', description: 'Milliseconds to sleep (if no selector)' },
+      tabIndex: { type: 'number', description: 'Tab index to wait in (default: active tab)' },
     },
   },
     handler: async (args, ctx) => {
-    const { page } = await ctx.browser.acquireContext();
+    const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
     try {
       if (args.ms && !args.selector) {
         const ms = Number(args.ms);

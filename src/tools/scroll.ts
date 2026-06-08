@@ -8,10 +8,11 @@ export const scrollTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         amount: { type: 'number', default: 800, description: 'Pixels to scroll (negative = up)' },
+        tabIndex: { type: 'number', description: 'Tab index to scroll in (default: active tab)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         const amount = Number(args.amount) || 800;

@@ -10,6 +10,7 @@ export const navigationTools: ToolDefinition[] = [
         url: { type: 'string', description: 'URL to navigate to (http/https only)' },
         waitUntil: { type: 'string', enum: ['load', 'domcontentloaded', 'networkidle'], default: 'load' },
         timeout: { type: 'number', default: 30000 },
+        tabIndex: { type: 'number', description: 'Tab index to navigate in (default: active tab)' },
       },
       required: ['url'],
     },
@@ -18,7 +19,7 @@ export const navigationTools: ToolDefinition[] = [
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return { content: [{ type: 'text', text: 'Only http/https URLs are allowed' }], isError: true };
       }
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         await page.goto(url, {
@@ -34,9 +35,14 @@ export const navigationTools: ToolDefinition[] = [
   {
     name: 'browser_back',
     description: 'Go back to the previous page in browser history. Equivalent to clicking the browser back button.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: async (_args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabIndex: { type: 'number', description: 'Tab index to go back in (default: active tab)' },
+      },
+    },
+    handler: async (args, ctx) => {
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         await page.goBack({ waitUntil: 'load' });
@@ -49,9 +55,14 @@ export const navigationTools: ToolDefinition[] = [
   {
     name: 'browser_forward',
     description: 'Go forward to the next page in browser history. Only works after browser_back has been called.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: async (_args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabIndex: { type: 'number', description: 'Tab index to go forward in (default: active tab)' },
+      },
+    },
+    handler: async (args, ctx) => {
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         await page.goForward({ waitUntil: 'load' });
@@ -64,9 +75,14 @@ export const navigationTools: ToolDefinition[] = [
   {
     name: 'browser_reload',
     description: 'Reload/refresh the current page. Useful when a page is stuck, needs fresh data, or after a form submission that returns the same page.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: async (_args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabIndex: { type: 'number', description: 'Tab index to reload (default: active tab)' },
+      },
+    },
+    handler: async (args, ctx) => {
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         await page.reload({ waitUntil: 'load' });

@@ -5,13 +5,14 @@ export const evaluateTool: ToolDefinition = {
   description: 'Execute arbitrary JavaScript code in the browser page context and get the return value. Returns serialized results (objects become JSON, primitives become strings). Useful for: reading data from JavaScript variables, triggering functions not exposed via UI, accessing localStorage/sessionStorage, modifying page state, or extracting data that is not visible in the DOM.',
   inputSchema: {
     type: 'object',
-    properties: {
-      code: { type: 'string', description: 'JavaScript code to execute' },
+      properties: {
+        code: { type: 'string', description: 'JavaScript code to execute' },
+        tabIndex: { type: 'number', description: 'Tab index to evaluate in (default: active tab)' },
+      },
+      required: ['code'],
     },
-    required: ['code'],
-  },
-  handler: async (args, ctx) => {
-    const { page } = await ctx.browser.acquireContext();
+    handler: async (args, ctx) => {
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
     try {
       
       const code = String(args.code);

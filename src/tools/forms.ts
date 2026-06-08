@@ -13,11 +13,12 @@ export const formTools: ToolDefinition[] = [
           additionalProperties: { type: 'string' },
         },
         submit: { type: 'boolean', default: false, description: 'Submit the form after filling' },
+        tabIndex: { type: 'number', description: 'Tab index to fill form in (default: active tab)' },
       },
       required: ['fields'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         const fields = args.fields as Record<string, string>;
@@ -84,11 +85,12 @@ export const formTools: ToolDefinition[] = [
         selector: { type: 'string', description: 'CSS selector of the select element' },
         value: { type: 'string', description: 'Option value to select' },
         label: { type: 'string', description: 'Option label text to select' },
+        tabIndex: { type: 'number', description: 'Tab index to select in (default: active tab)' },
       },
       required: ['selector'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         const locator = page.locator(String(args.selector));

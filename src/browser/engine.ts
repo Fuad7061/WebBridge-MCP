@@ -13,6 +13,17 @@ export function createBrowserManager(config: AppConfig) {
   let closing = false;
   const isMac = platform() === 'darwin';
 
+  // ── Request serialization (prevents racing on shared _page) ─────
+  let _requestQueue: Promise<void> = Promise.resolve();
+
+  async function enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      _requestQueue = _requestQueue.then(async () => {
+        try { resolve(await fn()); } catch (e) { reject(e); }
+      });
+    });
+  }
+
   // ── Persistent cookie store (survives browser restarts) ──────────
   let _storedCookies: any[] = [];
 
@@ -99,7 +110,7 @@ export function createBrowserManager(config: AppConfig) {
     return _context;
   }
 
-  async function acquireContext(): Promise<{ context: BrowserContext; page: Page }> {
+  async function acquireContext(tabIndex?: number): Promise<{ context: BrowserContext; page: Page }> {
     if (closing) throw new Error('Browser is shutting down');
 
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -113,6 +124,17 @@ export function createBrowserManager(config: AppConfig) {
         if (_contextWasFresh && _storedCookies.length > 0) {
           await replayStoredCookies(context);
         }
+
+        // If a specific tab was requested, resolve it and set as active
+        if (tabIndex !== undefined) {
+          const pages = context.pages();
+          if (tabIndex < 0 || tabIndex >= pages.length) {
+            throw new Error(`Tab index ${tabIndex} out of range (0-${pages.length - 1})`);
+          }
+          _page = pages[tabIndex];
+          await _page.bringToFront();
+        }
+
         return { context, page: _page };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -130,6 +152,11 @@ export function createBrowserManager(config: AppConfig) {
       }
     }
     throw new Error('Failed to acquire browser context after retry');
+  }
+
+  async function pages(): Promise<Page[]> {
+    if (!_context) return [];
+    return _context.pages();
   }
 
   async function releaseContext(): Promise<void> {
@@ -163,7 +190,11 @@ export function createBrowserManager(config: AppConfig) {
     _storedCookies = [];
   }
 
-  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies };
+  async function runLocked<T>(fn: () => Promise<T>): Promise<T> {
+    return enqueue(fn);
+  }
+
+  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages };
 }
 
 export type BrowserManager = ReturnType<typeof createBrowserManager>;

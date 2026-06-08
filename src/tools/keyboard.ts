@@ -15,11 +15,12 @@ export const keyboardTool: ToolDefinition = {
         default: 0,
         description: 'Delay between keydown and keyup in ms (mimics human typing)',
       },
+      tabIndex: { type: 'number', description: 'Tab index to press key in (default: active tab)' },
     },
     required: ['key'],
   },
   handler: async (args, ctx) => {
-    const { page } = await ctx.browser.acquireContext();
+    const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
     try {
       const key = String(args.key);
       const delay = Number(args.delay) || 0;

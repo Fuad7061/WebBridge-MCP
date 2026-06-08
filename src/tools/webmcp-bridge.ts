@@ -8,10 +8,11 @@ export const webmcpTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         url: { type: 'string', description: 'Navigate to URL first (optional)' },
+        tabIndex: { type: 'number', description: 'Tab index to discover in (default: active tab)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         if (args.url && typeof args.url === 'string') {
@@ -46,11 +47,12 @@ export const webmcpTools: ToolDefinition[] = [
       properties: {
         tool: { type: 'string', description: 'Name of the WebMCP tool to call' },
         args: { type: 'object', description: 'Arguments to pass to the tool' },
+        tabIndex: { type: 'number', description: 'Tab index to call WebMCP in (default: active tab)' },
       },
       required: ['tool'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         const toolName = String(args.tool);

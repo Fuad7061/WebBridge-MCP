@@ -9,11 +9,12 @@ export const monitorTool: ToolDefinition = {
       selector: { type: 'string', description: 'CSS selector to monitor' },
       timeout: { type: 'number', default: 60000, description: 'Max monitoring time in ms' },
       interval: { type: 'number', default: 500, description: 'Poll interval in ms' },
+      tabIndex: { type: 'number', description: 'Tab index to monitor (default: active tab)' },
     },
     required: ['selector'],
   },
   handler: async (args, ctx) => {
-    const { page } = await ctx.browser.acquireContext();
+    const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
     try {
       
       const selector = String(args.selector);

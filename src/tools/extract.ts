@@ -8,10 +8,11 @@ export const extractTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         selector: { type: 'string', description: 'CSS selector to scope text extraction' },
+        tabIndex: { type: 'number', description: 'Tab index to extract from (default: active tab)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         let text: string;
@@ -33,10 +34,11 @@ export const extractTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         selector: { type: 'string', description: 'CSS selector to scope HTML extraction' },
+        tabIndex: { type: 'number', description: 'Tab index to extract from (default: active tab)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         let html: string;
@@ -54,9 +56,14 @@ export const extractTools: ToolDefinition[] = [
   {
     name: 'browser_get_url',
     description: 'Get the full URL of the currently active page. Use this to verify the current location after navigation, form submission, or redirects.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: async (_args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabIndex: { type: 'number', description: 'Tab index to get URL from (default: active tab)' },
+      },
+    },
+    handler: async (args, ctx) => {
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         return { content: [{ type: 'text', text: page.url() }] };
@@ -68,9 +75,14 @@ export const extractTools: ToolDefinition[] = [
   {
     name: 'browser_get_title',
     description: 'Get the <title> of the current page. Useful for verifying the correct page loaded after navigation, or for identifying pages in multi-tab workflows.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: async (_args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabIndex: { type: 'number', description: 'Tab index to get title from (default: active tab)' },
+      },
+    },
+    handler: async (args, ctx) => {
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         return { content: [{ type: 'text', text: await page.title() }] };
@@ -86,11 +98,12 @@ export const extractTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         selector: { type: 'string', description: 'CSS selector to search for' },
+        tabIndex: { type: 'number', description: 'Tab index to search in (default: active tab)' },
       },
       required: ['selector'],
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         const elements = await page.evaluate((sel: string) => {
@@ -118,10 +131,11 @@ export const extractTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         url: { type: 'string', description: 'URL to recon (optional, uses current page if omitted)' },
+        tabIndex: { type: 'number', description: 'Tab index to recon (default: active tab)' },
       },
     },
     handler: async (args, ctx) => {
-      const { page } = await ctx.browser.acquireContext();
+      const { page } = await ctx.browser.acquireContext(args.tabIndex !== undefined ? Number(args.tabIndex) : undefined);
       try {
         
         if (args.url && typeof args.url === 'string') {
