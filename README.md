@@ -10,7 +10,7 @@
 - **Dual protocol**: MCP (stdio + SSE + Streamable HTTP) and HTTP REST API — works with Claude Code, Cursor, VS Code, **n8n MCP Client**, or raw cURL
 - **Anti-detection**: 7-layer stealth patches (WebDriver, plugins, WebGL, Canvas, permissions, Chrome API, languages) — behaves like a real human browser
 - **Playwright engine**: Cross-browser Chromium automation with persistent contexts and real CDP keystrokes
-- **35 tools**: Navigation, clicking, form filling, keyboard input, screenshots, cookies (including raw header string format), scraping, crawling, tab management, JS evaluation, overlay dismissal, element monitoring, workflow generator
+- **36 tools**: Navigation, clicking, form filling, keyboard input, screenshots, cookies (including raw header string format), scraping, crawling, tab management, JS evaluation, overlay dismissal, element monitoring, workflow generator, tab naming
 - **WebMCP bridge**: Discover and invoke Google's WebMCP tools on Chrome 146+ pages
 - **Cookie persistence**: Export/import sessions, raw header string parsing, survive container restarts and browser crashes (auto-replay on crash recovery)
 - **n8n-ready**: SSE + Streamable HTTP transports, persistent browser context across multi-step workflows
@@ -318,7 +318,33 @@ Request B ──→ (waiting) ──→ [navigate to URL2] ──→ done
 Request C ──→ (waiting) ──→ (waiting) ──→ [navigate to URL3] ──→ done
 ```
 
-The mutex covers all 35 tools, not just navigation. This means you can safely send multiple requests without worrying about interleaved state.
+The mutex covers all 36 tools, not just navigation. This means you can safely send multiple requests without worrying about interleaved state.
+
+### Tab identity in tool output
+
+Every tool response now includes the tab name (if set) and index so you can trace which tab an action targeted:
+
+```json
+{
+  "content": [
+    { "type": "text", "text": "Clicked #search" },
+    { "type": "text", "text": "Tab: \"amazon\" (index: 2)" }
+  ]
+}
+```
+
+This appears on all 24 page-operating tools — you never have to guess which tab received the action.
+
+### Idle tab cleanup
+
+To save memory, tabs that haven't been used for a configurable period are automatically closed. The active tab is never closed. Set via environment variable:
+
+```bash
+# Close tabs idle for 5 minutes (300000ms)
+WEBBRIDGE_TAB_IDLE_TIMEOUT_MS=300000
+```
+
+Disabled by default (`0`). The check runs every 60 seconds. Named tabs are also cleaned up from the registry when closed.
 
 ### How targeting works: which page does a click/type act on?
 
@@ -374,6 +400,7 @@ curl -X POST http://localhost:3456/set_tab_name \
 
 **Available tools for tab naming:**
 - `browser_new_tab` with `name` param — name on creation
+- `browser_navigate` with `name` param — name on navigation (new!)
 - `browser_set_tab_name` — name the current or specified tab
 - `browser_switch_tab` with `name` param — switch to a named tab
 
@@ -669,6 +696,7 @@ Returns a complete page analysis: elements with selectors, forms with fields, he
 | `WEBBRIDGE_TYPING_DELAY_MS` | `50` | Delay between keystrokes |
 | `WEBBRIDGE_MAX_CONCURRENCY` | `5` | Max browser contexts |
 | `WEBBRIDGE_RATE_LIMIT_MAX` | `60` | Requests/min per IP |
+| `WEBBRIDGE_TAB_IDLE_TIMEOUT_MS` | `0` | Auto-close idle tabs after N ms (`0` = disabled) |
 | `CHROME_PATH` | auto | Chrome/Chromium binary path |
 
 ## Architecture

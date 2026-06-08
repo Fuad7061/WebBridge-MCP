@@ -38,6 +38,49 @@ export function createBrowserManager(config: AppConfig) {
     });
   }
 
+  // ── Last resolved tab info (for output enrichment) ──────────────
+  let _lastTabName: string | null = null;
+  let _lastTabIndex = 0;
+
+  function getLastTabInfo(): { name: string | null; index: number } {
+    return { name: _lastTabName, index: _lastTabIndex };
+  }
+
+  // ── Tab activity tracking + idle cleanup ────────────────────────
+  let _tabActivity = new Map<Page, number>();
+  let _idleTimer: ReturnType<typeof setInterval> | null = null;
+
+  function updateActivity(page: Page): void {
+    _tabActivity.set(page, Date.now());
+  }
+
+  function startIdleCleanup(): void {
+    if (_idleTimer || !config.tabIdleTimeoutMs) return;
+    _idleTimer = setInterval(() => {
+      const now = Date.now();
+      const threshold = config.tabIdleTimeoutMs!;
+      if (!_context) return;
+      for (const page of _context.pages()) {
+        if (page === _page) continue; // never close active tab
+        const lastUsed = _tabActivity.get(page);
+        if (lastUsed && (now - lastUsed) > threshold) {
+          for (const [n, p] of _tabNames) {
+            if (p === page) _tabNames.delete(n);
+          }
+          _tabActivity.delete(page);
+          page.close().catch(() => {});
+        }
+      }
+    }, 60000);
+  }
+
+  function stopIdleCleanup(): void {
+    if (_idleTimer) {
+      clearInterval(_idleTimer);
+      _idleTimer = null;
+    }
+  }
+
   // ── Persistent cookie store (survives browser restarts) ──────────
   let _storedCookies: any[] = [];
 
@@ -131,6 +174,7 @@ export function createBrowserManager(config: AppConfig) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const context = await getContext();
+        startIdleCleanup(); // ensure idle timer is running
         if (!_page || _page.isClosed()) {
           _page = await context.newPage();
           await applyStealthPatches(_page, config);
@@ -156,6 +200,11 @@ export function createBrowserManager(config: AppConfig) {
           _page = pages[tabIndex];
           await _page.bringToFront();
         }
+
+        // Track which tab was resolved (for output enrichment)
+        _lastTabName = tabName !== undefined ? tabName : null;
+        _lastTabIndex = context.pages().indexOf(_page);
+        updateActivity(_page);
 
         return { context, page: _page };
       } catch (err) {
@@ -192,6 +241,7 @@ export function createBrowserManager(config: AppConfig) {
 
   async function close(): Promise<void> {
     closing = true;
+    stopIdleCleanup();
     try { await _page?.close(); } catch { /* ignore */ }
     try { await _context?.close(); } catch { /* ignore */ }
     try { await _browser?.close(); } catch { /* ignore */ }
@@ -216,7 +266,7 @@ export function createBrowserManager(config: AppConfig) {
     return enqueue(fn);
   }
 
-  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages, setTabName };
+  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages, setTabName, getLastTabInfo };
 }
 
 export type BrowserManager = ReturnType<typeof createBrowserManager>;

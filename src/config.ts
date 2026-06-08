@@ -56,5 +56,6 @@ export function getConfig(): AppConfig {
     typingDelayMs: parseInt(env('WEBBRIDGE_TYPING_DELAY_MS', '50'), 10),
     proxyUrl: env('WEBBRIDGE_PROXY_URL', undefined),
     rateLimitMax: parseInt(env('WEBBRIDGE_RATE_LIMIT_MAX', '60'), 10),
+    tabIdleTimeoutMs: parseInt(env('WEBBRIDGE_TAB_IDLE_TIMEOUT_MS', '0'), 10),
   };
 }

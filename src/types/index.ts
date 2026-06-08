@@ -33,6 +33,7 @@ export interface BrowserManager {
   runLocked<T>(fn: () => Promise<T>): Promise<T>;
   pages(): Promise<Page[]>;
   setTabName(name: string, page?: Page): void;
+  getLastTabInfo(): { name: string | null; index: number };
 }
 
 export interface SessionStore {
@@ -56,6 +57,7 @@ export interface AppConfig {
   typingDelayMs: number;
   proxyUrl?: string;
   rateLimitMax: number;
+  tabIdleTimeoutMs?: number;
 }
 
 export interface ReconResult {
