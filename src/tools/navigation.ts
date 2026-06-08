@@ -1,5 +1,16 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
 
+function deriveTabName(url: string): string | null {
+  try {
+    const u = new URL(url);
+    let host = u.hostname;
+    host = host.replace(/^www\./, '');
+    return host.split('.')[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 export const navigationTools: ToolDefinition[] = [
   {
     name: 'browser_navigate',
@@ -31,8 +42,9 @@ export const navigationTools: ToolDefinition[] = [
           timeout: (args.timeout as number) || 30000,
         });
 
-        if (args.name) {
-          ctx.browser.setTabName(String(args.name), page);
+        const explicitName = args.name ? String(args.name) : deriveTabName(url);
+        if (explicitName) {
+          ctx.browser.setTabName(explicitName, page);
         }
 
         return { content: [{ type: 'text', text: `Navigated to ${page.url()}` }] };

@@ -54,21 +54,37 @@ export function createBrowserManager(config: AppConfig) {
     _tabActivity.set(page, Date.now());
   }
 
+  async function discardPage(page: Page): Promise<void> {
+    // Try CDP-based tab discard first (preserves URL, frees memory)
+    try {
+      const cdpSession = await _context!.newCDPSession(page);
+      const { targetInfo } = await cdpSession.send('Target.getTargetInfo');
+      if (targetInfo?.targetId) {
+        await (cdpSession.send as any)('Target.discardTarget', { targetId: targetInfo.targetId });
+        return;
+      }
+    } catch {
+      // CDP discard failed — fall through
+    }
+    // Fallback: navigate to about:blank (keeps tab entry, frees DOM memory)
+    try { await page.goto('about:blank'); } catch {}
+  }
+
   function startIdleCleanup(): void {
     if (_idleTimer || !config.tabIdleTimeoutMs) return;
-    _idleTimer = setInterval(() => {
+    _idleTimer = setInterval(async () => {
       const now = Date.now();
       const threshold = config.tabIdleTimeoutMs!;
       if (!_context) return;
       for (const page of _context.pages()) {
-        if (page === _page) continue; // never close active tab
+        if (page === _page) continue; // never discard active tab
         const lastUsed = _tabActivity.get(page);
         if (lastUsed && (now - lastUsed) > threshold) {
           for (const [n, p] of _tabNames) {
             if (p === page) _tabNames.delete(n);
           }
           _tabActivity.delete(page);
-          page.close().catch(() => {});
+          await discardPage(page);
         }
       }
     }, 60000);
@@ -262,11 +278,35 @@ export function createBrowserManager(config: AppConfig) {
     _storedCookies = [];
   }
 
+  async function getTabStats(): Promise<Array<{ index: number; name: string | null; url: string; title: string; idleSeconds: number }>> {
+    if (!_context) return [];
+    const pages = _context.pages();
+    const now = Date.now();
+    const stats = [];
+    for (let i = 0; i < pages.length; i++) {
+      const p = pages[i];
+      const lastUsed = _tabActivity.get(p);
+      const idleSeconds = lastUsed ? Math.floor((now - lastUsed) / 1000) : -1;
+      let name: string | null = null;
+      for (const [n, np] of _tabNames) {
+        if (np === p) { name = n; break; }
+      }
+      stats.push({
+        index: i,
+        name,
+        url: p.url(),
+        title: await p.title().catch(() => ''),
+        idleSeconds,
+      });
+    }
+    return stats;
+  }
+
   async function runLocked<T>(fn: () => Promise<T>): Promise<T> {
     return enqueue(fn);
   }
 
-  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages, setTabName, getLastTabInfo };
+  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages, setTabName, getLastTabInfo, getTabStats };
 }
 
 export type BrowserManager = ReturnType<typeof createBrowserManager>;

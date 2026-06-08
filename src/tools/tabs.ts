@@ -1,5 +1,16 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
 
+function deriveTabName(url: string): string | null {
+  try {
+    const u = new URL(url);
+    let host = u.hostname;
+    host = host.replace(/^www\./, '');
+    return host.split('.')[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 export const tabTools: ToolDefinition[] = [
   {
     name: 'browser_list_tabs',
@@ -37,9 +48,10 @@ export const tabTools: ToolDefinition[] = [
         if (args.url) {
           await newPage.goto(String(args.url), { waitUntil: 'load' });
         }
-        if (args.name) {
-          ctx.browser.setTabName(String(args.name), newPage);
-          return { content: [{ type: 'text', text: `Opened new tab "${args.name}": ${newPage.url()}` }] };
+        const tabName = args.name ? String(args.name) : (args.url ? deriveTabName(String(args.url)) : null);
+        if (tabName) {
+          ctx.browser.setTabName(tabName, newPage);
+          return { content: [{ type: 'text', text: `Opened new tab "${tabName}": ${newPage.url()}` }] };
         }
         return { content: [{ type: 'text', text: `Opened new tab: ${newPage.url()}` }] };
       } finally {
@@ -98,6 +110,15 @@ export const tabTools: ToolDefinition[] = [
       } finally {
         await ctx.browser.releaseContext();
       }
+    },
+  },
+  {
+    name: 'browser_tab_stats',
+    description: 'Show all open browser tabs with their index, friendly name (if set), URL, page title, and idle time in seconds. Use this to get an overview of what tabs are running and how long since each was last used. The active tab shows idleSeconds as -1.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async (_args, ctx) => {
+      const tabs = await ctx.browser.getTabStats();
+      return { content: [{ type: 'text', text: JSON.stringify(tabs, null, 2) }] };
     },
   },
   {

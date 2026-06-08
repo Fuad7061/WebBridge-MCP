@@ -34,6 +34,7 @@ export interface BrowserManager {
   pages(): Promise<Page[]>;
   setTabName(name: string, page?: Page): void;
   getLastTabInfo(): { name: string | null; index: number };
+  getTabStats(): Promise<Array<{ index: number; name: string | null; url: string; title: string; idleSeconds: number }>>;
 }
 
 export interface SessionStore {

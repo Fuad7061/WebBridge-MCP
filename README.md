@@ -10,7 +10,9 @@
 - **Dual protocol**: MCP (stdio + SSE + Streamable HTTP) and HTTP REST API — works with Claude Code, Cursor, VS Code, **n8n MCP Client**, or raw cURL
 - **Anti-detection**: 7-layer stealth patches (WebDriver, plugins, WebGL, Canvas, permissions, Chrome API, languages) — behaves like a real human browser
 - **Playwright engine**: Cross-browser Chromium automation with persistent contexts and real CDP keystrokes
-- **36 tools**: Navigation, clicking, form filling, keyboard input, screenshots, cookies (including raw header string format), scraping, crawling, tab management, JS evaluation, overlay dismissal, element monitoring, workflow generator, tab naming
+- **37 tools**: Navigation, clicking, form filling, keyboard input, screenshots, cookies (including raw header string format), scraping, crawling, tab management, JS evaluation, overlay dismissal, element monitoring, workflow generator, tab naming, tab stats
+- **Auto-tab naming**: Navigating to a URL or opening a new tab automatically derives a friendly name from the domain (e.g. `https://x.com/feed` → name `"x"`) — no manual naming needed
+- **Memory management**: Idle tabs are discarded via CDP (preserving URL) instead of closed — saves memory while keeping tabs accessible
 - **WebMCP bridge**: Discover and invoke Google's WebMCP tools on Chrome 146+ pages
 - **Cookie persistence**: Export/import sessions, raw header string parsing, survive container restarts and browser crashes (auto-replay on crash recovery)
 - **n8n-ready**: SSE + Streamable HTTP transports, persistent browser context across multi-step workflows
@@ -335,16 +337,18 @@ Every tool response now includes the tab name (if set) and index so you can trac
 
 This appears on all 24 page-operating tools — you never have to guess which tab received the action.
 
-### Idle tab cleanup
+### Idle tab discard
 
-To save memory, tabs that haven't been used for a configurable period are automatically closed. The active tab is never closed. Set via environment variable:
+To save memory, tabs that haven't been used for a configurable period are **discarded** via CDP — the page is unloaded from memory but the tab entry and URL are preserved. The active tab is never discarded. When you target a discarded tab again (via `tabName` or `switch_tab`), Chromium automatically reloads it.
 
 ```bash
-# Close tabs idle for 5 minutes (300000ms)
+# Discard tabs idle for 5 minutes (300000ms)
 WEBBRIDGE_TAB_IDLE_TIMEOUT_MS=300000
 ```
 
-Disabled by default (`0`). The check runs every 60 seconds. Named tabs are also cleaned up from the registry when closed.
+Disabled by default (`0`). The check runs every 60 seconds. Named tabs are cleaned up from the registry on discard.
+
+**Cookies are not affected** — cookies live at the browser context level, not in page memory. Tab discard only unloads DOM/JS, so cookie-based sessions, stored cookies, and proxies all continue working without interruption.
 
 ### How targeting works: which page does a click/type act on?
 
@@ -357,13 +361,19 @@ Each tool operates on the **currently active tab** by default. In a single-threa
 
 ### Multi-tab workflows with tabName (recommended)
 
-Instead of tracking fragile positional indices, give your tabs **friendly names** and target them directly:
+Instead of tracking fragile positional indices, give your tabs **friendly names** and target them directly. Names are now **auto-derived from the URL domain** — no manual naming needed:
 
 ```bash
-# Step 1: Open tabs with names
+# Step 1: Open tabs — names auto-derived from domain (amazon, admin)
 curl -X POST http://localhost:3456/new_tab \
   -H "Authorization: Bearer wbr_key" \
-  -d '{"url":"https://amazon.com","name":"amazon"}'
+  -d '{"url":"https://amazon.com"}'
+# → Auto-named "amazon"
+
+curl -X POST http://localhost:3456/navigate \
+  -H "Authorization: Bearer wbr_key" \
+  -d '{"url":"https://admin.example.com"}'
+# → Auto-named "admin"
 
 curl -X POST http://localhost:3456/new_tab \
   -H "Authorization: Bearer wbr_key" \
@@ -398,11 +408,21 @@ curl -X POST http://localhost:3456/set_tab_name \
   -d '{"name":"results","index":2}'
 ```
 
+**Auto-naming from URL**: `browser_navigate` and `browser_new_tab` now auto-derive a friendly name from the domain when no explicit `name` is given:
+- `https://amazon.com/...` → auto-named `"amazon"`
+- `https://x.com/...` → auto-named `"x"`
+- `https://admin.example.com/...` → auto-named `"admin"`
+
+Still works with explicit `name` if you want a custom name. Explicit name always wins.
+
 **Available tools for tab naming:**
-- `browser_new_tab` with `name` param — name on creation
-- `browser_navigate` with `name` param — name on navigation (new!)
+- `browser_new_tab` — auto-names from URL; explicit `name` param overrides
+- `browser_navigate` — auto-names from URL; explicit `name` param overrides
 - `browser_set_tab_name` — name the current or specified tab
 - `browser_switch_tab` with `name` param — switch to a named tab
+
+**Monitor tabs with:**
+- `browser_tab_stats` — shows all open tabs with name, URL, title, and idle time
 
 **All these tools accept `tabName`** (overrides `tabIndex` if both are provided):
 - Navigation: `navigate`, `back`, `forward`, `reload`
@@ -411,7 +431,7 @@ curl -X POST http://localhost:3456/set_tab_name \
 - Page control: `wait`, `dismiss_overlays`, `evaluate`, `monitor`
 - WebMCP: `webmcp_discover`, `webmcp_call`
 
-**Tools that DON'T accept tabName/tabIndex** (operate on context, not page): `cookies`, `cookies_export`, `cookies_import`, `cookies_from_header`, `list_tabs`, `new_tab` (has its own `name`), `switch_tab` (has its own `name`), `close_tab`, `crawl`, `map`, `workflow_guide`.
+**Tools that DON'T accept tabName/tabIndex** (operate on context, not page): `cookies`, `cookies_export`, `cookies_import`, `cookies_from_header`, `list_tabs`, `new_tab` (has its own `name`), `switch_tab` (has its own `name`), `close_tab`, `crawl`, `map`, `workflow_guide`, `tab_stats`.
 
 > **How it works:** `tabName` uses an in-memory registry (`Map<string, Page>`) on the server. When you name a tab, the server stores the reference and auto-removes it when the tab is closed. Tab names survive browser crashes as long as the server process stays alive. The mutex ensures concurrent operation — you can safely send `click` on "amazon" and `type` on "admin" in parallel without race conditions.
 
