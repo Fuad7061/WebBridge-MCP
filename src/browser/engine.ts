@@ -30,10 +30,6 @@ export function createBrowserManager(config: AppConfig) {
   function setTabName(name: string, page?: Page): void {
     const target = page || _page;
     if (!target) throw new Error('No page available to name');
-    if (_tabNames.has(name) && _tabNames.get(name) !== target) {
-      const old = _tabNames.get(name)!;
-      if (!old.isClosed()) old.off('close', undefined as any);
-    }
     _tabNames.set(name, target);
     target.on('close', () => {
       for (const [n, p] of _tabNames) {

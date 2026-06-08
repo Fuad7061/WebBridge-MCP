@@ -12,6 +12,7 @@ export const navigationTools: ToolDefinition[] = [
         timeout: { type: 'number', default: 30000 },
         tabIndex: { type: 'number', description: 'Tab index to navigate in (default: active tab)' },
         tabName: { type: 'string', description: 'Tab name to navigate in (overrides tabIndex)' },
+        name: { type: 'string', description: 'Register this tab with a friendly name (e.g. "amazon") — enables tabName targeting on subsequent calls. Same as set_tab_name but done inline with navigation.' },
       },
       required: ['url'],
     },
@@ -29,6 +30,11 @@ export const navigationTools: ToolDefinition[] = [
           waitUntil: (args.waitUntil as 'load' | 'domcontentloaded' | 'networkidle') || 'load',
           timeout: (args.timeout as number) || 30000,
         });
+
+        if (args.name) {
+          ctx.browser.setTabName(String(args.name), page);
+        }
+
         return { content: [{ type: 'text', text: `Navigated to ${page.url()}` }] };
       } finally {
         await ctx.browser.releaseContext();
