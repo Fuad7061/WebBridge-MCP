@@ -19,9 +19,10 @@ export const evaluateTool: ToolDefinition = {
     try {
       
       const code = String(args.code);
-      const result = await page.evaluate((c: string) => {
+      const result = await page.evaluate(async (c: string) => {
         try {
-          return { success: true, result: eval(c) };
+          const val = eval(c);
+          return { success: true, result: await val };
         } catch (err) {
           return { success: false, error: err instanceof Error ? err.message : String(err) };
         }
