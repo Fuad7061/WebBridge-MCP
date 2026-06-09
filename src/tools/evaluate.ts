@@ -2,11 +2,12 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 
 export const evaluateTool: ToolDefinition = {
   name: 'browser_evaluate',
-  description: 'Execute arbitrary JavaScript code in the browser page context and get the return value. Returns serialized results (objects become JSON, primitives become strings). Useful for: reading data from JavaScript variables, triggering functions not exposed via UI, accessing localStorage/sessionStorage, modifying page state, or extracting data that is not visible in the DOM.',
+  description: 'Execute arbitrary JavaScript code in the browser page context and get the return value. Returns serialized results (objects become JSON, primitives become strings). Useful for: reading data from JavaScript variables, triggering functions not exposed via UI, accessing localStorage/sessionStorage, modifying page state, or extracting data that is not visible in the DOM. Optionally target a specific iframe by URL pattern (frameUrl) to execute code in a different origin context (e.g., reCAPTCHA iframes).',
   inputSchema: {
     type: 'object',
       properties: {
         code: { type: 'string', description: 'JavaScript code to execute' },
+        frameUrl: { type: 'string', description: 'Target a specific iframe by matching its src URL (substring match). Code runs in the iframe\'s origin context with its cookies. E.g., "recaptcha" targets reCAPTCHA iframes.' },
         tabIndex: { type: 'number', description: 'Tab index to evaluate in (default: active tab)' },
         tabName: { type: 'string', description: 'Tab name to evaluate in (overrides tabIndex)' },
       },
@@ -19,7 +20,21 @@ export const evaluateTool: ToolDefinition = {
     try {
       
       const code = String(args.code);
-      const result = await page.evaluate(async (c: string) => {
+      const frameUrl = args.frameUrl ? String(args.frameUrl) : undefined;
+
+      let evaluateTarget;
+      if (frameUrl) {
+        const frames = page.frames();
+        const targetFrame = frames.find(f => f.url().includes(frameUrl));
+        if (!targetFrame) {
+          return { content: [{ type: 'text', text: `Error: No frame found with URL containing "${frameUrl}". Available frames: ${frames.map(f => f.url()).join(', ')}` }], isError: true };
+        }
+        evaluateTarget = targetFrame;
+      } else {
+        evaluateTarget = page;
+      }
+
+      const result = await evaluateTarget.evaluate(async (c: string) => {
         try {
           const val = eval(c);
           return { success: true, result: await val };
