@@ -114,7 +114,7 @@ export const cookieTools: ToolDefinition[] = [
       required: ['cookieString', 'url'],
     },
     handler: async (args, ctx) => {
-      const { context } = await ctx.browser.acquireContext();
+      const { context, page } = await ctx.browser.acquireContext();
       try {
         const raw = String(args.cookieString);
         const url = String(args.url);
@@ -198,22 +198,47 @@ export const cookieTools: ToolDefinition[] = [
           return { content: [{ type: 'text', text: 'No valid cookie pairs found in string' }], isError: true };
         }
 
-        const cookies = pending.map(c => {
-          const out: Record<string, unknown> = { name: c.name, value: c.value };
-          if (c.url) out.url = c.url;
-          else {
-            if (c.domain) out.domain = c.domain;
-            out.path = c.path || '/';
-          }
-          if (c.secure) out.secure = true;
-          if (c.httpOnly) out.httpOnly = true;
-          if (c.sameSite) out.sameSite = c.sameSite;
-          return out;
-        });
+        // Split __Host- cookies — they must be set via CDP directly
+        // (Playwright's addCookies converts url→domain, which __Host- forbids)
+        const hostCookies = pending.filter(c => c.name.startsWith('__Host-'));
+        const regularCookies = pending.filter(c => !c.name.startsWith('__Host-'));
 
-        await context.addCookies(cookies as any);
+        // Set regular cookies via Playwright
+        if (regularCookies.length > 0) {
+          const regularOut = regularCookies.map(c => {
+            const out: Record<string, unknown> = { name: c.name, value: c.value };
+            if (c.domain) out.domain = c.domain;
+            if (c.path) out.path = c.path || '/';
+            if (c.secure) out.secure = true;
+            if (c.httpOnly) out.httpOnly = true;
+            if (c.sameSite) out.sameSite = c.sameSite;
+            return out;
+          });
+          await context.addCookies(regularOut as any);
+        }
+
+        // Set __Host- cookies via CDP (passes url, NOT domain)
+        if (hostCookies.length > 0) {
+          const cdpSession = await context.newCDPSession(page);
+          for (const c of hostCookies) {
+            try {
+              await (cdpSession.send as any)('Storage.setCookies', {
+                cookies: [{
+                  name: c.name,
+                  value: c.value,
+                  url: url,
+                  secure: true,
+                }],
+              });
+            } catch {
+              // Skip individual __Host- cookie if it fails
+            }
+          }
+        }
+
+        // Persist all cookies for crash recovery
         ctx.browser.storeCookies(await context.cookies());
-        return { content: [{ type: 'text', text: `Set ${cookies.length} cookie(s) from header string` }] };
+        return { content: [{ type: 'text', text: `Set ${pending.length} cookie(s) from header string` }] };
       } finally {
         await ctx.browser.releaseContext();
       }
