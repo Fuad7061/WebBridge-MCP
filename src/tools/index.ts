@@ -16,6 +16,7 @@ import { monitorTool } from './monitor.js';
 import { webmcpTools } from './webmcp-bridge.js';
 import { keyboardTool } from './keyboard.js';
 import { workflowGuideTool } from './workflow-guide.js';
+import { fetchTool } from './fetch.js';
 
 export function getAllTools(): ToolDefinition[] {
   return [
@@ -36,5 +37,6 @@ export function getAllTools(): ToolDefinition[] {
     ...webmcpTools,
     keyboardTool,
     workflowGuideTool,
+    fetchTool,
   ];
 }
