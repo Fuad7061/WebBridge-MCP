@@ -10,7 +10,8 @@
 - **Dual protocol**: MCP (stdio + SSE + Streamable HTTP) and HTTP REST API — works with Claude Code, Cursor, VS Code, **n8n MCP Client**, or raw cURL
 - **Anti-detection**: 7-layer stealth patches (WebDriver, plugins, WebGL, Canvas, permissions, Chrome API, languages) — behaves like a real human browser
 - **Playwright engine**: Cross-browser Chromium automation with persistent contexts and real CDP keystrokes
-- **37 tools**: Navigation, clicking, form filling, keyboard input, screenshots, cookies (including raw header string format), scraping, crawling, tab management, JS evaluation, overlay dismissal, element monitoring, workflow generator, tab naming, tab stats
+- **CSS + XPath selectors**: All tools accept both CSS selectors and XPath expressions — including recon, click, type, wait, monitor, and find_elements
+- **38 tools**: Navigation, clicking, form filling, keyboard input, screenshots, cookies (including raw header string format), scraping, crawling, tab management, JS evaluation, in-browser fetch, overlay dismissal, element monitoring, workflow generator, tab naming, tab stats
 - **Auto-tab naming**: Navigating to a URL or opening a new tab automatically derives a friendly name from the domain (e.g. `https://x.com/feed` → name `"x"`) — no manual naming needed
 - **Memory management**: Idle tabs are discarded via CDP (preserving URL) instead of closed — saves memory while keeping tabs accessible
 - **WebMCP bridge**: Discover and invoke Google's WebMCP tools on Chrome 146+ pages
@@ -491,7 +492,7 @@ curl -X POST http://localhost:3456/type \
 **`browser_click`** (at least one of `selector`/`text`/`x+y` required)
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | — | — | CSS selector of element to click |
+| `selector` | string | — | — | CSS selector or XPath of element to click |
 | `text` | string | — | — | Click element containing this text (fuzzy match) |
 | `x` | number | — | — | X coordinate for pixel-precise click |
 | `y` | number | — | — | Y coordinate for pixel-precise click |
@@ -500,7 +501,7 @@ curl -X POST http://localhost:3456/type \
 **`browser_scroll_to_element`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | — | — | CSS selector of element to scroll into view |
+| `selector` | string | — | — | CSS selector or XPath of element to scroll into view |
 | `text` | string | — | — | Scroll to element containing this text |
 
 **`browser_scroll`**
@@ -513,7 +514,7 @@ curl -X POST http://localhost:3456/type \
 **`browser_type`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | ✅ | — | CSS selector of the input field |
+| `selector` | string | ✅ | — | CSS selector or XPath of the input field |
 | `text` | string | — | — | Text to type (alias: `value`) |
 | `value` | string | — | — | Text to type (alias: `text`) |
 | `action` | string | — | `fill` | `"fill"` = clear + fill instantly; `"type"` = per-character keystrokes with delay |
@@ -530,7 +531,7 @@ curl -X POST http://localhost:3456/type \
 **`browser_select`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | ✅ | — | CSS selector of the `<select>` element |
+| `selector` | string | ✅ | — | CSS selector or XPath of the `<select>` element |
 | `value` | string | — | — | Option `value` attribute to select |
 | `label` | string | — | — | Option visible text label to select |
 
@@ -547,7 +548,7 @@ curl -X POST http://localhost:3456/type \
 **`browser_screenshot`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | — | — | CSS selector of element to capture (omit for full viewport) |
+| `selector` | string | — | — | CSS selector or XPath of element to capture (omit for full viewport) |
 | `fullPage` | boolean | — | `false` | Capture full page (scrollable length) |
 
 ### Tab Management
@@ -610,12 +611,12 @@ curl -X POST http://localhost:3456/type \
 **`browser_get_text`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | — | — | CSS selector to scope text (omit for full page text) |
+| `selector` | string | — | — | CSS selector or XPath to scope text (omit for full page text) |
 
 **`browser_get_html`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | — | — | CSS selector to scope HTML (omit for full page HTML) |
+| `selector` | string | — | — | CSS selector or XPath to scope HTML (omit for full page HTML) |
 
 **`browser_get_url`** — No parameters. Returns the current page URL.
 
@@ -624,7 +625,7 @@ curl -X POST http://localhost:3456/type \
 **`browser_find_elements`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | ✅ | — | CSS selector to find matching elements |
+| `selector` | string | ✅ | — | CSS selector or XPath to find matching elements |
 
 ### Reconnaissance
 
@@ -654,7 +655,7 @@ Returns a complete page analysis: elements with selectors, forms with fields, he
 **`browser_wait`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | — | — | CSS selector to wait for (omit for pure delay) |
+| `selector` | string | — | — | CSS selector or XPath to wait for (omit for pure delay) |
 | `timeout` | number | — | `30000` | Max wait time in ms |
 | `ms` | number | — | — | Milliseconds to sleep (only used when `selector` is omitted) |
 
@@ -681,7 +682,7 @@ Returns a complete page analysis: elements with selectors, forms with fields, he
 **`surf_monitor`**
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `selector` | string | ✅ | — | CSS selector to monitor for changes |
+| `selector` | string | ✅ | — | CSS selector or XPath to monitor for changes |
 | `timeout` | number | — | `60000` | Max monitoring time in ms |
 | `interval` | number | — | `500` | Poll interval in ms |
 

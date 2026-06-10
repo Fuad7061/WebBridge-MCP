@@ -85,7 +85,7 @@ export const formTools: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        selector: { type: 'string', description: 'CSS selector of the select element' },
+        selector: { type: 'string', description: 'CSS selector or XPath of the select element' },
         value: { type: 'string', description: 'Option value to select' },
         label: { type: 'string', description: 'Option label text to select' },
         tabIndex: { type: 'number', description: 'Tab index to select in (default: active tab)' },

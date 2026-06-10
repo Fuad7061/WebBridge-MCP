@@ -3,11 +3,11 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 export const clickTools: ToolDefinition[] = [
   {
     name: 'browser_click',
-    description: 'Click an element using one of three methods: (1) CSS selector — precise, use the exact selector from recon output; (2) text content — fuzzy-match any element containing the text (best for buttons/links with visible labels); (3) x/y coordinates — pixel-precise click anywhere on the page. Add human-like behavior with hover + small random delay.',
+    description: 'Click an element using one of three methods: (1) CSS selector or XPath — precise, use the exact selector from recon output; (2) text content — fuzzy-match any element containing the text (best for buttons/links with visible labels); (3) x/y coordinates — pixel-precise click anywhere on the page. Add human-like behavior with hover + small random delay.',
     inputSchema: {
       type: 'object',
       properties: {
-        selector: { type: 'string', description: 'CSS selector to click' },
+        selector: { type: 'string', description: 'CSS selector or XPath to click' },
         text: { type: 'string', description: 'Click element containing this text' },
         x: { type: 'number', description: 'X coordinate for click' },
         y: { type: 'number', description: 'Y coordinate for click' },
@@ -59,11 +59,11 @@ export const clickTools: ToolDefinition[] = [
   },
   {
     name: 'browser_scroll_to_element',
-    description: 'Scroll the page until the specified element is visible in the viewport. Use this before browser_click or browser_screenshot if the element is off-screen. Accepts a CSS selector or text content to locate the element.',
+    description: 'Scroll the page until the specified element is visible in the viewport. Use this before browser_click or browser_screenshot if the element is off-screen. Accepts a CSS selector/XPath or text content to locate the element.',
     inputSchema: {
       type: 'object',
       properties: {
-        selector: { type: 'string', description: 'CSS selector of element to scroll to' },
+        selector: { type: 'string', description: 'CSS selector or XPath of element to scroll to' },
         text: { type: 'string', description: 'Text content of element to scroll to' },
         tabIndex: { type: 'number', description: 'Tab index to scroll in (default: active tab)' },
         tabName: { type: 'string', description: 'Tab name to scroll in (overrides tabIndex)' },

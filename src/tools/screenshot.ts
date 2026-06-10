@@ -2,11 +2,11 @@ import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js'
 
 export const screenshotTool: ToolDefinition = {
   name: 'browser_screenshot',
-  description: 'Capture a PNG screenshot of the current viewport, the full scrollable page (with fullPage: true), or a specific element (with a CSS selector). Returns base64-encoded image data. Useful for visual verification, debugging layouts, or capturing dynamic content.',
+    description: 'Capture a PNG screenshot of the current viewport, the full scrollable page (with fullPage: true), or a specific element (with a CSS selector or XPath). Returns base64-encoded image data. Useful for visual verification, debugging layouts, or capturing dynamic content.',
     inputSchema: {
       type: 'object',
       properties: {
-        selector: { type: 'string', description: 'CSS selector of element to capture (omit for full page)' },
+        selector: { type: 'string', description: 'CSS selector or XPath of element to capture (omit for full page)' },
         fullPage: { type: 'boolean', default: false, description: 'Capture full page (not just viewport)' },
         tabIndex: { type: 'number', description: 'Tab index to screenshot (default: active tab)' },
         tabName: { type: 'string', description: 'Tab name to screenshot (overrides tabIndex)' },

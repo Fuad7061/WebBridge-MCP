@@ -385,7 +385,7 @@ This automatically clicks buttons matching "Reject", "Accept", "Close", etc. in 
 | Where You Got the Selector | How to Use It |
 |---|---|
 | **Chrome DevTools** — right-click element → Copy → Copy selector | Use as-is in `"selector"` params. IDs like `#email`, classes like `.btn-primary`, attributes like `[name="q"]` |
-| **Chrome DevTools** — copy full XPath | Do NOT use XPath. Instead use recon output or CSS selector. XPath is not supported by these tools |
+| **Chrome DevTools** — copy full XPath | Use as-is in `"selector"` params. XPath is fully supported (use `//` prefix). Example: `//button[normalize-space()="Submit"]` |
 | **Chrome DevTools** — copy JS path | Not useful. Use CSS selectors instead |
 | **Recon output** — `selector` field from elements/forms | Use the `selector` value directly. These are optimized CSS selectors |
 | **Recon output** — `text` field from elements | Use in `click {"text":"..."}` or `scroll_to_element {"text":"..."}` for fuzzy text matching |

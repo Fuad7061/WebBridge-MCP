@@ -3,11 +3,11 @@ import type { ToolDefinition, ToolContext, ToolResult, ReconResult } from '../ty
 export const extractTools: ToolDefinition[] = [
   {
     name: 'browser_get_text',
-    description: 'Extract visible text content from the page. If a CSS selector is provided, only the text within that element is returned. If no selector is given, the full page text is returned. Use this for scraping article content, search results, prices, or any visible text data.',
+    description: 'Extract visible text content from the page. If a CSS selector or XPath is provided, only the text within that element is returned. If no selector is given, the full page text is returned. Use this for scraping article content, search results, prices, or any visible text data.',
     inputSchema: {
       type: 'object',
       properties: {
-        selector: { type: 'string', description: 'CSS selector to scope text extraction' },
+        selector: { type: 'string', description: 'CSS selector or XPath to scope text extraction' },
         tabIndex: { type: 'number', description: 'Tab index to extract from (default: active tab)' },
         tabName: { type: 'string', description: 'Tab name to extract from (overrides tabIndex)' },
       },
@@ -32,11 +32,11 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'browser_get_html',
-    description: 'Get the raw HTML source of the page or a specific element (with CSS selector). Returns the outerHTML including tags, attributes, and structure. Use this when you need to inspect the DOM structure, extract hidden data, or scrape content that includes formatting that innerText loses.',
+    description: 'Get the raw HTML source of the page or a specific element (with CSS selector or XPath). Returns the outerHTML including tags, attributes, and structure. Use this when you need to inspect the DOM structure, extract hidden data, or scrape content that includes formatting that innerText loses.',
     inputSchema: {
       type: 'object',
       properties: {
-        selector: { type: 'string', description: 'CSS selector to scope HTML extraction' },
+        selector: { type: 'string', description: 'CSS selector or XPath to scope HTML extraction' },
         tabIndex: { type: 'number', description: 'Tab index to extract from (default: active tab)' },
         tabName: { type: 'string', description: 'Tab name to extract from (overrides tabIndex)' },
       },
@@ -105,11 +105,11 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'browser_find_elements',
-    description: 'Find and return a list of all elements matching a CSS selector. Returns each element\'s tag name, id, class name, visible text, href (for links), and value (for inputs). Limited to 50 elements. Use this when you need to discover what elements exist on a page without loading full page content.',
+    description: 'Find and return a list of all elements matching a CSS selector or XPath. Returns each element\'s tag name, id, class name, visible text, href (for links), and value (for inputs). Limited to 50 elements. Use this when you need to discover what elements exist on a page without loading full page content.',
     inputSchema: {
       type: 'object',
       properties: {
-        selector: { type: 'string', description: 'CSS selector to search for' },
+        selector: { type: 'string', description: 'CSS selector or XPath to search for' },
         tabIndex: { type: 'number', description: 'Tab index to search in (default: active tab)' },
         tabName: { type: 'string', description: 'Tab name to search in (overrides tabIndex)' },
       },
@@ -122,8 +122,11 @@ export const extractTools: ToolDefinition[] = [
       try {
         
         const elements = await page.evaluate((sel: string) => {
-          const els = document.querySelectorAll(sel);
-          return Array.from(els).slice(0, 50).map(el => ({
+          const isXPath = (s: string) => s.startsWith('//') || s.startsWith('../') || s.startsWith('./') || s.startsWith('(');
+          const els: Element[] = isXPath(sel)
+            ? (() => { const r: Element[] = []; const it = document.evaluate(sel, document, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null); let n; while ((n = it.iterateNext())) r.push(n as Element); return r; })()
+            : Array.from(document.querySelectorAll(sel));
+          return els.slice(0, 50).map(el => ({
             tag: el.tagName.toLowerCase(),
             id: el.id || undefined,
             className: (el as HTMLElement).className || undefined,
@@ -141,7 +144,7 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'recon',
-    description: 'Perform a full structured reconnaissance scan of the current page. Returns: URL, title, meta tags, headings (h1-h6), all interactive elements with CSS selectors (buttons, links, inputs), form structure with fields, overlay/cookie banners, captcha detection, and a content summary. Uses deep traversal including Shadow DOM and ARIA roles to find elements even in complex SPAs like Google Flow. The output provides the exact selectors you need for browser_click, browser_type, browser_fill_form, and other tools.',
+    description: 'Perform a full structured reconnaissance scan of the current page. Returns: URL, title, meta tags, headings (h1-h6), all interactive elements with CSS selectors and XPath (buttons, links, inputs), form structure with fields, overlay/cookie banners, captcha detection, and a content summary. Uses deep traversal including Shadow DOM and ARIA roles to find elements even in complex SPAs like Google Flow. The output provides the exact selectors and XPaths you need for browser_click, browser_type, browser_fill_form, and other tools.',
     inputSchema: {
       type: 'object',
       properties: {
