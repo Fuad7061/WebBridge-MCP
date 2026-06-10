@@ -141,7 +141,7 @@ export const extractTools: ToolDefinition[] = [
   },
   {
     name: 'recon',
-    description: 'Perform a full structured reconnaissance scan of the current page. Returns: URL, title, meta tags, headings (h1-h6), all interactive elements with CSS selectors (buttons, links, inputs), form structure with fields, overlay/cookie banners, captcha detection, and a content summary. Use this as the first step after navigation to understand the page structure before interacting with elements. The output provides the exact selectors you need for browser_click, browser_type, browser_fill_form, and other tools.',
+    description: 'Perform a full structured reconnaissance scan of the current page. Returns: URL, title, meta tags, headings (h1-h6), all interactive elements with CSS selectors (buttons, links, inputs), form structure with fields, overlay/cookie banners, captcha detection, and a content summary. Uses deep traversal including Shadow DOM and ARIA roles to find elements even in complex SPAs like Google Flow. The output provides the exact selectors you need for browser_click, browser_type, browser_fill_form, and other tools.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -173,38 +173,125 @@ export const extractTools: ToolDefinition[] = [
             text: h.textContent?.trim() || '',
           })).filter(h => h.text);
 
-          const interactiveTags = 'a,button,input,select,textarea,[role="button"],[role="link"],[tabindex]:not([tabindex="-1"])';
-          const elements = Array.from(document.querySelectorAll(interactiveTags)).slice(0, 200).map(el => {
-            const tag = el.tagName.toLowerCase();
-            const text = el.textContent?.trim() || null;
+          function getInteractiveSelector(el: Element): string {
             const id = el.id || '';
+            if (id) return `#${CSS.escape(id)}`;
             const ariaLabel = el.getAttribute('aria-label') || '';
+            if (ariaLabel) return `[aria-label="${CSS.escape(ariaLabel)}"]`;
             const dataTestId = el.getAttribute('data-testid') || '';
+            if (dataTestId) return `[data-testid="${CSS.escape(dataTestId)}"]`;
             const name = el.getAttribute('name') || '';
-            let selector = '';
-            if (id) selector = `#${CSS.escape(id)}`;
-            else if (ariaLabel) selector = `[aria-label="${CSS.escape(ariaLabel)}"]`;
-            else if (dataTestId) selector = `[data-testid="${CSS.escape(dataTestId)}"]`;
-            else if (name && (tag === 'input' || tag === 'select' || tag === 'textarea')) selector = `[name="${CSS.escape(name)}"]`;
-            else selector = tag + (text ? `:has-text("${text.slice(0, 50).replace(/"/g, '\\"')}")` : '');
-            return {
-              tag, text,
+            const tag = el.tagName.toLowerCase();
+            if (name && (tag === 'input' || tag === 'select' || tag === 'textarea' || tag === 'iframe')) return `[name="${CSS.escape(name)}"]`;
+            const placeholder = el.getAttribute('placeholder') || '';
+            if (placeholder) return `[placeholder="${CSS.escape(placeholder)}"]`;
+            const text = el.textContent?.trim()?.slice(0, 50);
+            if (text && (tag === 'a' || tag === 'button' || tag === 'label' || tag === 'span')) return `${tag}:has-text("${text.replace(/"/g, '\\"')}")`;
+            const role = el.getAttribute('role') || '';
+            if (role) {
+              if (ariaLabel) return `[role="${role}"][aria-label="${CSS.escape(ariaLabel)}"]`;
+              if (name) return `[role="${role}"][name="${CSS.escape(name)}"]`;
+              if (text) return `[role="${role}"]:has-text("${text.replace(/"/g, '\\"')}")`;
+              return `[role="${role}"]`;
+            }
+            return tag;
+          }
+
+          function isVisible(el: Element): boolean {
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) return false;
+            return true;
+          }
+
+          const seenElements = new WeakSet<Element>();
+
+          function deepQueryAll(root: Element | Document | ShadowRoot): Element[] {
+            const interactiveRoles = [
+              'button', 'link', 'textbox', 'combobox', 'listbox', 'option',
+              'checkbox', 'radio', 'switch', 'slider', 'tab', 'menuitem',
+              'menuitemcheckbox', 'menuitemradio', 'spinbutton', 'searchbox',
+              'progressbar', 'scrollbar', 'gridcell', 'treeitem', 'dialog',
+              'alertdialog', 'tooltip', 'heading'
+            ];
+            const interactiveTags = 'a,button,input,select,textarea,label,summary,details,meter,progress';
+            const results: Element[] = [];
+
+            const interactive = root.querySelectorAll<HTMLElement>(interactiveTags);
+            for (const el of interactive) {
+              if (!seenElements.has(el) && (isVisible(el) || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) {
+                seenElements.add(el);
+                results.push(el);
+              }
+            }
+
+            const roleElements = root.querySelectorAll<HTMLElement>('[role]');
+            for (const el of roleElements) {
+              const role = el.getAttribute('role') || '';
+              if (!seenElements.has(el) && interactiveRoles.includes(role)) {
+                seenElements.add(el);
+                results.push(el);
+              }
+            }
+
+            if ((root as Element).shadowRoot) {
+              const shadowResults = deepQueryAll((root as Element).shadowRoot!);
+              results.push(...shadowResults);
+            }
+
+            const children = root.querySelectorAll<Element>(':not(script):not(style):not(template)');
+            for (const child of children) {
+              if (child.shadowRoot && !seenElements.has(child)) {
+                const shadowResults = deepQueryAll(child.shadowRoot);
+                results.push(...shadowResults);
+              }
+            }
+
+            return results;
+          }
+
+          const allInteractive = deepQueryAll(document);
+          const seen = new Set<string>();
+          const elements = allInteractive.slice(0, 500).map(el => {
+            const tag = el.tagName.toLowerCase();
+            let text = '';
+            if (tag === 'input' || tag === 'textarea') {
+              text = (el as HTMLInputElement).value || (el as HTMLInputElement).placeholder || '';
+            } else {
+              text = el.textContent?.trim()?.slice(0, 100) || '';
+            }
+            const ariaLabel = el.getAttribute('aria-label') || '';
+            const role = el.getAttribute('role') || undefined;
+            const selector = getInteractiveSelector(el);
+            const label = el.getAttribute('placeholder') || ariaLabel || '';
+            const result = {
+              tag,
+              text: text || undefined,
               type: (el as HTMLInputElement).type || undefined,
               href: (el as HTMLAnchorElement).href || undefined,
-              role: el.getAttribute('role') || undefined,
+              role,
+              name: el.getAttribute('name') || undefined,
+              'aria-label': ariaLabel || undefined,
+              label: label || undefined,
               selector,
             };
-          });
+
+            const dedupKey = selector || (tag + text);
+            if (seen.has(dedupKey)) return null;
+            seen.add(dedupKey);
+            return result;
+          }).filter(Boolean);
 
           const forms = Array.from(document.querySelectorAll('form')).slice(0, 20).map(form => ({
             action: (form as HTMLFormElement).action || undefined,
             method: (form as HTMLFormElement).method || undefined,
             id: form.id || undefined,
-            fields: Array.from(form.querySelectorAll('input,select,textarea')).slice(0, 30).map(f => {
+            fields: Array.from(form.querySelectorAll('input,select,textarea,div[contenteditable]')).slice(0, 30).map(f => {
               const field = f as HTMLInputElement;
-              const label = form.querySelector(`label[for="${field.id}"]`)?.textContent?.trim()
-                || form.querySelector(`label:has(+ ${field.tagName}[name="${field.name}"])`)?.textContent?.trim()
-                || field.placeholder || '';
+              const fieldId = field.id || '';
+              const label = form.querySelector(`label[for="${CSS.escape(fieldId)}"]`)?.textContent?.trim()
+                || field.placeholder || field.getAttribute('aria-label') || '';
               return {
                 tag: field.tagName.toLowerCase(),
                 type: field.type || undefined,
@@ -213,17 +300,17 @@ export const extractTools: ToolDefinition[] = [
                 label,
                 placeholder: field.placeholder || undefined,
                 required: field.required || undefined,
-                selector: field.id ? `#${CSS.escape(field.id)}` : `[name="${CSS.escape(field.name)}"]`,
+                selector: field.id ? `#${CSS.escape(field.id)}` : (field.name ? `[name="${CSS.escape(field.name)}"]` : `[placeholder="${CSS.escape(field.placeholder || '')}"]`),
               };
             }),
           }));
 
           const overlays = Array.from(document.querySelectorAll(
-            '[class*="modal"],[class*="overlay"],[class*="popup"],[class*="dialog"],[class*="cookie"],[class*="consent"],[aria-modal="true"]'
+            '[class*="modal"],[class*="overlay"],[class*="popup"],[class*="dialog"],[class*="cookie"],[class*="consent"],[aria-modal="true"],[role="dialog"],[role="alertdialog"]'
           )).slice(0, 10).map(el => ({
             tag: el.tagName.toLowerCase(),
             text: (el.textContent || '').trim().slice(0, 200),
-            selector: el.id ? `#${CSS.escape(el.id)}` : el.getAttribute('aria-label') ? `[aria-label="${CSS.escape(el.getAttribute('aria-label')!)}"]` : el.tagName.toLowerCase(),
+            selector: el.id ? `#${CSS.escape(el.id)}` : el.getAttribute('aria-label') ? `[aria-label="${CSS.escape(el.getAttribute('aria-label')!)}"]` : el.getAttribute('role') ? `[role="${el.getAttribute('role')}"]` : el.tagName.toLowerCase(),
           }));
 
           const captchas = Array.from(document.querySelectorAll('iframe[src*="captcha"], iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="arkose"], iframe[src*="funcaptcha"], iframe[title*="captcha"], iframe[title*="CAPTCHA"]')).map(el => {
@@ -232,7 +319,10 @@ export const extractTools: ToolDefinition[] = [
             if (src.includes('recaptcha')) type = 'reCAPTCHA';
             else if (src.includes('hcaptcha')) type = 'hCaptcha';
             else if (src.includes('arkose') || src.includes('funcaptcha')) type = 'Arkose/FunCaptcha';
-            return { type, selector: `iframe[src="${CSS.escape(src)}"]` };
+            const name = el.getAttribute('name') || '';
+            let selector = `iframe[src="${CSS.escape(src)}"]`;
+            if (name) selector = `iframe[name="${CSS.escape(name)}"]`;
+            return { type, selector };
           });
 
           const contentSummary = (document.body?.innerText || '').trim().slice(0, 2000);
@@ -248,7 +338,7 @@ export const extractTools: ToolDefinition[] = [
             overlays,
             captchas,
             contentSummary,
-          };
+          } as ReconResult;
         });
 
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
