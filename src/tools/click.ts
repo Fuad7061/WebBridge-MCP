@@ -29,12 +29,12 @@ export const clickTools: ToolDefinition[] = [
         }
 
         if (args.selector) {
-          const el = await page.$(String(args.selector));
-          if (!el) return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
-          await el.scrollIntoViewIfNeeded();
-          await el.hover();
+          const loc = page.locator(String(args.selector));
+          if (await loc.count() === 0) return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
+          await loc.first().scrollIntoViewIfNeeded();
+          await loc.first().hover();
           await page.waitForTimeout(50 + Math.random() * 50);
-          await el.click();
+          await loc.first().click();
           return { content: [{ type: 'text', text: `Clicked selector: ${args.selector}` }] };
         }
 
