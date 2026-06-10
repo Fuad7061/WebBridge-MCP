@@ -173,28 +173,62 @@ export const extractTools: ToolDefinition[] = [
             text: h.textContent?.trim() || '',
           })).filter(h => h.text);
 
-          function getInteractiveSelector(el: Element): string {
+          function getSelector(el: Element): { css: string; xpath: string } {
             const id = el.id || '';
-            if (id) return `#${CSS.escape(id)}`;
-            const ariaLabel = el.getAttribute('aria-label') || '';
-            if (ariaLabel) return `[aria-label="${CSS.escape(ariaLabel)}"]`;
-            const dataTestId = el.getAttribute('data-testid') || '';
-            if (dataTestId) return `[data-testid="${CSS.escape(dataTestId)}"]`;
-            const name = el.getAttribute('name') || '';
             const tag = el.tagName.toLowerCase();
-            if (name && (tag === 'input' || tag === 'select' || tag === 'textarea' || tag === 'iframe')) return `[name="${CSS.escape(name)}"]`;
+            const ariaLabel = el.getAttribute('aria-label') || '';
+            const dataTestId = el.getAttribute('data-testid') || '';
+            const name = el.getAttribute('name') || '';
             const placeholder = el.getAttribute('placeholder') || '';
-            if (placeholder) return `[placeholder="${CSS.escape(placeholder)}"]`;
-            const text = el.textContent?.trim()?.slice(0, 50);
-            if (text && (tag === 'a' || tag === 'button' || tag === 'label' || tag === 'span')) return `${tag}:has-text("${text.replace(/"/g, '\\"')}")`;
             const role = el.getAttribute('role') || '';
-            if (role) {
-              if (ariaLabel) return `[role="${role}"][aria-label="${CSS.escape(ariaLabel)}"]`;
-              if (name) return `[role="${role}"][name="${CSS.escape(name)}"]`;
-              if (text) return `[role="${role}"]:has-text("${text.replace(/"/g, '\\"')}")`;
-              return `[role="${role}"]`;
+            const text = el.textContent?.trim()?.slice(0, 100) || '';
+            const innerText = (el as HTMLElement).innerText?.trim()?.slice(0, 100) || '';
+
+            const esc = (s: string) => s.replace(/"/g, '\\"');
+            const escXpath = (s: string) => s.replace(/'/g, "&apos;");
+
+            let css = '';
+            let xpath = '';
+
+            if (id) {
+              css = `#${CSS.escape(id)}`;
+              xpath = `//*[@id="${escXpath(id)}"]`;
+            } else if (dataTestId) {
+              css = `[data-testid="${CSS.escape(dataTestId)}"]`;
+              xpath = `//*[@data-testid="${escXpath(dataTestId)}"]`;
+            } else if (ariaLabel) {
+              css = `[aria-label="${CSS.escape(ariaLabel)}"]`;
+              xpath = `//*[@aria-label="${escXpath(ariaLabel)}"]`;
+            } else if (name && (tag === 'input' || tag === 'select' || tag === 'textarea' || tag === 'iframe')) {
+              css = `[name="${CSS.escape(name)}"]`;
+              xpath = `//${tag}[@name="${escXpath(name)}"]`;
+            } else if (placeholder) {
+              css = `[placeholder="${CSS.escape(placeholder)}"]`;
+              xpath = `//${tag}[@placeholder="${escXpath(placeholder)}"]`;
+            } else if (role && ariaLabel) {
+              css = `[role="${role}"][aria-label="${CSS.escape(ariaLabel)}"]`;
+              xpath = `//*[@role="${role}" and @aria-label="${escXpath(ariaLabel)}"]`;
+            } else if (role && text) {
+              css = `[role="${role}"]:has-text("${esc(text.slice(0,50))}")`;
+              xpath = `//*[@role="${role}" and normalize-space()="${escXpath(text.slice(0,80))}"]`;
+            } else if (role && name) {
+              css = `[role="${role}"][name="${CSS.escape(name)}"]`;
+              xpath = `//*[@role="${role}" and @name="${escXpath(name)}"]`;
+            } else if (role) {
+              css = `[role="${role}"]`;
+              xpath = `//*[@role="${role}"]`;
+            } else if (text && (tag === 'a' || tag === 'button' || tag === 'label' || tag === 'span')) {
+              css = `${tag}:has-text("${esc(text.slice(0,50))}")`;
+              xpath = `//${tag}[normalize-space()="${escXpath(text.slice(0,80))}"]`;
+            } else if (innerText) {
+              xpath = `//${tag}[normalize-space()="${escXpath(innerText.slice(0,80))}"]`;
+              css = tag;
+            } else {
+              css = tag;
+              xpath = `//${tag}`;
             }
-            return tag;
+
+            return { css, xpath };
           }
 
           function isVisible(el: Element): boolean {
@@ -263,7 +297,7 @@ export const extractTools: ToolDefinition[] = [
             }
             const ariaLabel = el.getAttribute('aria-label') || '';
             const role = el.getAttribute('role') || undefined;
-            const selector = getInteractiveSelector(el);
+            const sel = getSelector(el);
             const label = el.getAttribute('placeholder') || ariaLabel || '';
             const result = {
               tag,
@@ -274,10 +308,11 @@ export const extractTools: ToolDefinition[] = [
               name: el.getAttribute('name') || undefined,
               'aria-label': ariaLabel || undefined,
               label: label || undefined,
-              selector,
+              selector: sel.css,
+              xpath: sel.xpath,
             };
 
-            const dedupKey = selector || (tag + text);
+            const dedupKey = sel.css || sel.xpath || (tag + text);
             if (seen.has(dedupKey)) return null;
             seen.add(dedupKey);
             return result;

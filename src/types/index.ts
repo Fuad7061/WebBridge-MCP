@@ -76,6 +76,7 @@ export interface ReconResult {
     name?: string;
     'aria-label'?: string;
     label?: string;
+    xpath?: string;
     x?: number;
     y?: number;
   }>;
