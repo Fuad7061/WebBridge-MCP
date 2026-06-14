@@ -1,4 +1,5 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
+import { findElement } from './shared.js';
 
 export const typeTools: ToolDefinition[] = [
   {
@@ -29,9 +30,8 @@ export const typeTools: ToolDefinition[] = [
           return { content: [{ type: 'text', text: 'No text or value provided' }], isError: true };
         }
 
-        const locator = page.locator(String(args.selector));
-        const count = await locator.count();
-        if (count === 0) {
+        const locator = await findElement(page, String(args.selector));
+        if (!locator) {
           return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
         }
         await locator.scrollIntoViewIfNeeded();

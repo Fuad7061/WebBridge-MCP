@@ -1,4 +1,5 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
+import { findElement } from './shared.js';
 
 export const screenshotTool: ToolDefinition = {
   name: 'browser_screenshot',
@@ -20,8 +21,8 @@ export const screenshotTool: ToolDefinition = {
       
 
       if (args.selector) {
-        const locator = page.locator(String(args.selector));
-        if (await locator.count() === 0) {
+        const locator = await findElement(page, String(args.selector));
+        if (!locator) {
           return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
         }
         const screenshot = await locator.screenshot();

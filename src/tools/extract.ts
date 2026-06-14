@@ -1,4 +1,5 @@
 import type { ToolDefinition, ToolContext, ToolResult, ReconResult } from '../types/index.js';
+import { findElement } from './shared.js';
 
 export const extractTools: ToolDefinition[] = [
   {
@@ -20,7 +21,9 @@ export const extractTools: ToolDefinition[] = [
         
         let text: string;
         if (args.selector) {
-          text = await page.locator(String(args.selector)).innerText();
+          const found = await findElement(page, String(args.selector));
+          if (!found) return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
+          text = await found.innerText();
         } else {
           text = await page.evaluate(() => document.body?.innerText || '');
         }
@@ -49,7 +52,9 @@ export const extractTools: ToolDefinition[] = [
         
         let html: string;
         if (args.selector) {
-          html = await page.locator(String(args.selector)).evaluate(el => el.outerHTML);
+          const found = await findElement(page, String(args.selector));
+          if (!found) return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
+          html = await found.evaluate(el => el.outerHTML);
         } else {
           html = await page.evaluate(() => document.documentElement?.outerHTML || '');
         }
@@ -123,9 +128,25 @@ export const extractTools: ToolDefinition[] = [
         
         const elements = await page.evaluate((sel: string) => {
           const isXPath = (s: string) => s.startsWith('//') || s.startsWith('../') || s.startsWith('./') || s.startsWith('(');
-          const els: Element[] = isXPath(sel)
-            ? (() => { const r: Element[] = []; const it = document.evaluate(sel, document, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null); let n; while ((n = it.iterateNext())) r.push(n as Element); return r; })()
-            : Array.from(document.querySelectorAll(sel));
+          const queryAll = (root: Document | Element | ShadowRoot): Element[] => {
+            const results: Element[] = [];
+            if (isXPath(sel)) {
+              const it = (root as Document).evaluate(sel, root, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
+              let n;
+              while ((n = it.iterateNext())) results.push(n as Element);
+            } else {
+              results.push(...Array.from((root as Document).querySelectorAll(sel)));
+            }
+            return results;
+          };
+          const els: Element[] = queryAll(document);
+          const iframes = document.querySelectorAll('iframe');
+          for (const iframe of iframes) {
+            try {
+              const doc = iframe.contentDocument || iframe.contentWindow?.document;
+              if (doc) els.push(...queryAll(doc));
+            } catch {}
+          }
           return els.slice(0, 50).map(el => ({
             tag: el.tagName.toLowerCase(),
             id: el.id || undefined,

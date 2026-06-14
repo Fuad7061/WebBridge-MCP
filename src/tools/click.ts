@@ -1,4 +1,5 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
+import { findElement } from './shared.js';
 
 export const clickTools: ToolDefinition[] = [
   {
@@ -29,25 +30,26 @@ export const clickTools: ToolDefinition[] = [
         }
 
         if (args.selector) {
-          const loc = page.locator(String(args.selector));
-          if (await loc.count() === 0) return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
-          await loc.first().scrollIntoViewIfNeeded();
-          await loc.first().hover();
+          const found = await findElement(page, String(args.selector));
+          if (!found) return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
+          await found.first().scrollIntoViewIfNeeded();
+          await found.first().hover();
           await page.waitForTimeout(50 + Math.random() * 50);
-          await loc.first().click();
+          await found.first().click();
           return { content: [{ type: 'text', text: `Clicked selector: ${args.selector}` }] };
         }
 
         if (args.text) {
           const text = String(args.text);
-          const el = await page.locator(`:has-text("${text.replace(/"/g, '\\"')}")`).first();
-          if (await el.count() === 0) {
+          const escaped = text.replace(/"/g, '\\"');
+          const found = await findElement(page, `:has-text("${escaped}")`);
+          if (!found) {
             return { content: [{ type: 'text', text: `Element with text "${text}" not found` }], isError: true };
           }
-          await el.scrollIntoViewIfNeeded();
-          await el.hover();
+          await found.first().scrollIntoViewIfNeeded();
+          await found.first().hover();
           await page.waitForTimeout(50 + Math.random() * 50);
-          await el.click();
+          await found.first().click();
           return { content: [{ type: 'text', text: `Clicked element with text: ${text}` }] };
         }
 
@@ -76,11 +78,17 @@ export const clickTools: ToolDefinition[] = [
       try {
         
         if (args.selector) {
-          await page.locator(String(args.selector)).first().scrollIntoViewIfNeeded();
+          const found = await findElement(page, String(args.selector));
+          if (!found) return { content: [{ type: 'text', text: `Element not found: ${args.selector}` }], isError: true };
+          await found.first().scrollIntoViewIfNeeded();
           return { content: [{ type: 'text', text: `Scrolled to: ${args.selector}` }] };
         }
         if (args.text) {
-          await page.locator(`:has-text("${String(args.text).replace(/"/g, '\\"')}")`).first().scrollIntoViewIfNeeded();
+          const text = String(args.text);
+          const escaped = text.replace(/"/g, '\\"');
+          const found = await findElement(page, `:has-text("${escaped}")`);
+          if (!found) return { content: [{ type: 'text', text: `Element with text "${text}" not found` }], isError: true };
+          await found.first().scrollIntoViewIfNeeded();
           return { content: [{ type: 'text', text: `Scrolled to element with text: ${args.text}` }] };
         }
         return { content: [{ type: 'text', text: 'Provide selector or text' }], isError: true };

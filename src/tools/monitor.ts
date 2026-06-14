@@ -29,8 +29,19 @@ export const monitorTool: ToolDefinition = {
           const isXPath = (s: string) => s.startsWith('//') || s.startsWith('../') || s.startsWith('./') || s.startsWith('(');
           const q = (s: string) => {
             if (isXPath(s)) return document.evaluate(s, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue as Element | null;
-            return document.querySelector(s);
-            };
+            const el = document.querySelector(s);
+            if (el) return el;
+            for (const iframe of document.querySelectorAll('iframe')) {
+              try {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (doc) {
+                  const found = doc.querySelector(s);
+                  if (found) return found;
+                }
+              } catch {}
+            }
+            return null;
+          };
           const start = Date.now();
           let lastText = q(sel)?.textContent?.trim() || '';
 

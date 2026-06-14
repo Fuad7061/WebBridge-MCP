@@ -1,4 +1,5 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
+import { findElement } from './shared.js';
 
 export const waitTool: ToolDefinition = {
   name: 'browser_wait',
@@ -26,7 +27,33 @@ export const waitTool: ToolDefinition = {
 
       const selector = String(args.selector);
       const timeout = Number(args.timeout) || 30000;
-      await page.locator(selector).first().waitFor({ timeout, state: 'visible' });
+
+      const found = await findElement(page, selector);
+      if (found) {
+        await found.first().waitFor({ timeout, state: 'visible' });
+      } else {
+        await page.waitForFunction((sel: string) => {
+          const isXPath = sel.startsWith('//') || sel.startsWith('../') || sel.startsWith('./') || sel.startsWith('(');
+          const q = (s: string) => {
+            if (isXPath) return document.evaluate(s, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            return document.querySelector(s);
+          };
+          if (q(sel)) return true;
+          for (const iframe of document.querySelectorAll('iframe')) {
+            try {
+              const doc = iframe.contentDocument || iframe.contentWindow?.document;
+              if (doc) {
+                if (isXPath) {
+                  if (doc.evaluate(sel, doc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue) return true;
+                } else {
+                  if (doc.querySelector(sel)) return true;
+                }
+              }
+            } catch {}
+          }
+          return false;
+        }, selector, { timeout });
+      }
       return { content: [{ type: 'text', text: `Selector "${selector}" is now visible` }] };
     } catch (err) {
       return {

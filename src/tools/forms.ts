@@ -1,4 +1,5 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
+import { findElement } from './shared.js';
 
 export const formTools: ToolDefinition[] = [
   {
@@ -29,28 +30,16 @@ export const formTools: ToolDefinition[] = [
 
         for (const [key, value] of Object.entries(fields)) {
           if (typeof value !== 'string') continue;
-          let locator = page.locator(`#${CSS.escape(key)}`);
+          let locator = await findElement(page, `#${CSS.escape(key)}`);
 
-          if (await locator.count() === 0) {
-            locator = page.locator(`[name="${CSS.escape(key)}"]`);
-          }
-          if (await locator.count() === 0) {
-            locator = page.locator(`[placeholder="${CSS.escape(key)}"]`);
-          }
-          if (await locator.count() === 0) {
-            locator = page.locator(`label:has-text("${CSS.escape(key)}") + input, label:has-text("${CSS.escape(key)}") + textarea`);
-          }
-          if (await locator.count() === 0) {
-            locator = page.locator(`label:has-text("${CSS.escape(key)}") ~ input, label:has-text("${CSS.escape(key)}") ~ textarea`);
-          }
-          if (await locator.count() === 0) {
-            locator = page.locator(`label:has-text("${CSS.escape(key)}") + select`);
-          }
-          if (await locator.count() === 0) {
-            locator = page.locator(`label:has-text("${CSS.escape(key)}") ~ select`);
-          }
+          if (!locator) locator = await findElement(page, `[name="${CSS.escape(key)}"]`);
+          if (!locator) locator = await findElement(page, `[placeholder="${CSS.escape(key)}"]`);
+          if (!locator) locator = await findElement(page, `label:has-text("${CSS.escape(key)}") + input, label:has-text("${CSS.escape(key)}") + textarea`);
+          if (!locator) locator = await findElement(page, `label:has-text("${CSS.escape(key)}") ~ input, label:has-text("${CSS.escape(key)}") ~ textarea`);
+          if (!locator) locator = await findElement(page, `label:has-text("${CSS.escape(key)}") + select`);
+          if (!locator) locator = await findElement(page, `label:has-text("${CSS.escape(key)}") ~ select`);
 
-          if (await locator.count() > 0) {
+          if (locator) {
             const tag = await locator.evaluate(el => el.tagName.toLowerCase());
             if (tag === 'select') {
               await locator.selectOption(value);
@@ -65,9 +54,9 @@ export const formTools: ToolDefinition[] = [
         }
 
         if (args.submit) {
-          const submitBtn = page.locator('button[type="submit"], input[type="submit"]').first();
-          if (await submitBtn.count() > 0) {
-            await submitBtn.click();
+          const submitBtn = await findElement(page, 'button[type="submit"], input[type="submit"]');
+          if (submitBtn) {
+            await submitBtn.first().click();
           } else {
             await page.keyboard.press('Enter');
           }
@@ -99,8 +88,8 @@ export const formTools: ToolDefinition[] = [
       const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
-        const locator = page.locator(String(args.selector));
-        if (await locator.count() === 0) {
+        const locator = await findElement(page, String(args.selector));
+        if (!locator) {
           return { content: [{ type: 'text', text: `Select element not found: ${args.selector}` }], isError: true };
         }
         if (args.value) {

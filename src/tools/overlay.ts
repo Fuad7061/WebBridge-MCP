@@ -1,4 +1,5 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types/index.js';
+import { findElement } from './shared.js';
 
 const DISMISS_PATTERNS = [
   'reject all', 'reject', 'decline', 'deny',
@@ -36,22 +37,25 @@ export const overlayTools: ToolDefinition[] = [
         let dismissed = 0;
 
         for (const pattern of DISMISS_PATTERNS) {
-          const btn = page.locator(`button:has-text("${pattern.replace(/"/g, '\\"')}"), [role="button"]:has-text("${pattern.replace(/"/g, '\\"')}"), input[type="button"]:has-text("${pattern.replace(/"/g, '\\"')}")`).first();
-          if (await btn.count() > 0 && await btn.isVisible()) {
-            await btn.click({ timeout: 1000 }).catch(() => {});
+          const escaped = pattern.replace(/"/g, '\\"');
+          const btn = await findElement(page, `button:has-text("${escaped}"), [role="button"]:has-text("${escaped}"), input[type="button"]:has-text("${escaped}")`);
+          if (btn && await btn.first().isVisible()) {
+            await btn.first().click({ timeout: 1000 }).catch(() => {});
             dismissed++;
             if (dismissed >= 3) break;
           }
         }
 
         if (dismissed === 0) {
-          const closeButtons = page.locator('[aria-label="Close"], [aria-label="close"], .close, .modal-close, .cookie-close');
-          const count = await closeButtons.count();
-          for (let i = 0; i < Math.min(count, 3); i++) {
-            try {
-              await closeButtons.nth(i).click({ timeout: 1000 });
-              dismissed++;
-            } catch { /* ignore */ }
+          const closeBtn = await findElement(page, '[aria-label="Close"], [aria-label="close"], .close, .modal-close, .cookie-close');
+          if (closeBtn) {
+            const count = await closeBtn.count();
+            for (let i = 0; i < Math.min(count, 3); i++) {
+              try {
+                await closeBtn.nth(i).click({ timeout: 1000 });
+                dismissed++;
+              } catch { /* ignore */ }
+            }
           }
         }
 
