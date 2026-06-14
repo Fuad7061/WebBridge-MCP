@@ -55,16 +55,19 @@ export const evaluateTool: ToolDefinition = {
         result = await tryEvaluate(targetFrame, code);
       } else {
         result = await tryEvaluate(page, code);
-        if (!result.success) {
+        const isErrorResult = (r: any) =>
+          !r.success ||
+          (r.result && typeof r.result === 'object' && (r.result.status === 'error' || r.result.error));
+        if (isErrorResult(result)) {
           for (const frame of page.frames()) {
             if (frame === page.mainFrame()) continue;
             result = await tryEvaluate(frame, code);
-            if (result.success) break;
+            if (!isErrorResult(result)) break;
           }
         }
       }
 
-      if (result.success === false) {
+      if (!result.success) {
         return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
       }
 
