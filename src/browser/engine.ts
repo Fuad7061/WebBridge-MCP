@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { platform } from 'node:os';
 import type { AppConfig } from '../types/index.js';
 import { applyStealthPatches } from './stealth.js';
+import { logger } from '../logger.js';
 
 export function createBrowserManager(config: AppConfig) {
   let _browser: Browser | null = null;
@@ -12,6 +13,8 @@ export function createBrowserManager(config: AppConfig) {
   let _contextWasFresh = false;
   let closing = false;
   const isMac = platform() === 'darwin';
+  let _launchedAt: number | null = null;
+  let _restarts = 0;
 
   // ── Request serialization (prevents racing on shared _page) ─────
   let _requestQueue: Promise<void> = Promise.resolve();
@@ -137,6 +140,8 @@ export function createBrowserManager(config: AppConfig) {
         '--disable-renderer-backgrounding',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+        '--disk-cache-size=1',
+        '--disable-logging',
       ];
       if (!isMac) launchArgs.push('--no-sandbox');
       if (config.proxyUrl) launchArgs.push(`--proxy-server=${config.proxyUrl}`);
@@ -153,10 +158,15 @@ export function createBrowserManager(config: AppConfig) {
         args: launchArgs,
       });
 
+      _launchedAt = Date.now();
+      logger.info('browser', `Chromium ${_browser.version()} launched`, { headless: String(headlessMode), stealth: config.stealthLevel, proxy: !!config.proxyUrl });
+
       _browser.on('disconnected', () => {
+        if (!closing) logger.warn('browser', 'Chromium disconnected');
         _context = null;
         _page = null;
         _browser = null;
+        _launchedAt = null;
         _tabNames.clear();
       });
     }
@@ -306,7 +316,77 @@ export function createBrowserManager(config: AppConfig) {
     return enqueue(fn);
   }
 
-  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages, setTabName, getLastTabInfo, getTabStats };
+  // ── Dashboard management helpers ───────────────────────────────
+
+  function getStatus() {
+    return {
+      connected: !!_browser && _browser.isConnected(),
+      version: _browser?.isConnected() ? _browser.version() : null,
+      launchedAt: _launchedAt,
+      restarts: _restarts,
+      tabCount: _context ? _context.pages().length : 0,
+      storedCookies: _storedCookies.length,
+      idleCleanup: !!_idleTimer,
+    };
+  }
+
+  function getActiveIndex(): number {
+    if (!_context || !_page || _page.isClosed()) return -1;
+    return _context.pages().indexOf(_page);
+  }
+
+  function pageAt(index: number): Page {
+    const list = _context ? _context.pages() : [];
+    if (index < 0 || index >= list.length) throw new Error(`Tab index ${index} out of range`);
+    return list[index];
+  }
+
+  async function activateTab(index: number): Promise<void> {
+    const p = pageAt(index);
+    _page = p;
+    await p.bringToFront();
+    updateActivity(p);
+  }
+
+  async function closeTab(index: number): Promise<void> {
+    const p = pageAt(index);
+    for (const [n, np] of _tabNames) if (np === p) _tabNames.delete(n);
+    _tabActivity.delete(p);
+    await p.close();
+    if (_page === p) {
+      const remaining = _context ? _context.pages() : [];
+      _page = remaining.length ? remaining[remaining.length - 1] : null;
+    }
+  }
+
+  function renameTab(index: number, name: string | null): void {
+    const p = pageAt(index);
+    for (const [n, np] of _tabNames) if (np === p) _tabNames.delete(n);
+    if (name) {
+      const existing = _tabNames.get(name);
+      if (existing && existing !== p && !existing.isClosed()) throw new Error(`Name "${name}" is already used by another tab`);
+      setTabName(name, p);
+    }
+  }
+
+  /** Close Chromium; it relaunches lazily on the next tool call with the current config. */
+  async function restart(): Promise<void> {
+    stopIdleCleanup();
+    closing = true;
+    try { await _context?.close(); } catch { /* ignore */ }
+    try { await _browser?.close(); } catch { /* ignore */ }
+    _page = null;
+    _context = null;
+    _browser = null;
+    _launchedAt = null;
+    _tabNames.clear();
+    _tabActivity.clear();
+    closing = false;
+    _restarts++;
+    logger.info('browser', 'Browser restarted from dashboard — will relaunch on next request');
+  }
+
+  return { acquireContext, releaseContext, getPage, close, storeCookies, getStoredCookies, clearStoredCookies, runLocked, pages, setTabName, getLastTabInfo, getTabStats, getStatus, getActiveIndex, activateTab, closeTab, renameTab, restart };
 }
 
 export type BrowserManager = ReturnType<typeof createBrowserManager>;

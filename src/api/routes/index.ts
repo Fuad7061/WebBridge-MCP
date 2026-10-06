@@ -7,6 +7,10 @@ import type { FastifyReply } from 'fastify';
 
 const sseClients = new Map<string, FastifyReply>();
 
+/** Metadata about connected MCP SSE clients (shown in the dashboard). */
+export interface SseClientInfo { id: string; ip: string; userAgent: string; connectedAt: number; messages: number; lastActivity: number }
+export const sseClientInfo = new Map<string, SseClientInfo>();
+
 export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
   const registry = createToolRegistry(ctx);
 
@@ -26,7 +30,7 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
   app.post('/tools/:name', async (request, reply) => {
     const { name } = request.params as { name: string };
     const args = (request.body as Record<string, unknown>) || {};
-    const result = await registry.callTool(name, args);
+    const result = await registry.callTool(name, args, 'rest');
     if (result.isError) {
       reply.status(400);
     }
@@ -38,7 +42,7 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
 
     app.post(routePath, async (request, reply) => {
       const args = (request.body as Record<string, unknown>) || {};
-      const result = await registry.callTool(tool.name, args);
+      const result = await registry.callTool(tool.name, args, 'rest');
       if (result.isError) {
         reply.status(400);
       }
@@ -49,7 +53,7 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
     if (tool.name === 'browser_list_tabs') {
       app.post('/tabs', async (request, reply) => {
         const args = (request.body as Record<string, unknown>) || {};
-        const result = await registry.callTool(tool.name, args);
+        const result = await registry.callTool(tool.name, args, 'rest');
         if (result.isError) reply.status(400);
         return { success: !result.isError, data: result.content };
       });
@@ -57,7 +61,7 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
     if (tool.name === 'browser_dismiss_overlays') {
       app.post('/dismiss', async (request, reply) => {
         const args = (request.body as Record<string, unknown>) || {};
-        const result = await registry.callTool(tool.name, args);
+        const result = await registry.callTool(tool.name, args, 'rest');
         if (result.isError) reply.status(400);
         return { success: !result.isError, data: result.content };
       });
@@ -71,6 +75,8 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
     const method = body.method as string;
     const id = body.id;
     const sessionId = (request.query as Record<string, string>)?.sessionId;
+    const sseInfo = sessionId ? sseClientInfo.get(sessionId) : undefined;
+    if (sseInfo) { sseInfo.messages++; sseInfo.lastActivity = Date.now(); }
 
     try {
       let result;
@@ -86,7 +92,7 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
         const params = body.params as Record<string, unknown>;
         const name = params?.name as string;
         const args = (params?.arguments as Record<string, unknown>) || {};
-        const callResult = await registry.callTool(name, args);
+        const callResult = await registry.callTool(name, args, sseInfo ? 'mcp-sse' : 'mcp');
         result = callResult;
       } else if (method === 'initialize') {
         result = {
@@ -133,6 +139,14 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
 
     // Register this SSE client
     sseClients.set(sessionId, reply);
+    sseClientInfo.set(sessionId, {
+      id: sessionId,
+      ip: request.ip,
+      userAgent: String(request.headers['user-agent'] || ''),
+      connectedAt: Date.now(),
+      messages: 0,
+      lastActivity: Date.now(),
+    });
 
     // Send endpoint event — tells the client where to POST JSON-RPC messages
     const endpointUrl = `/mcp?sessionId=${sessionId}`;
@@ -151,6 +165,7 @@ export function registerRoutes(app: FastifyInstance, ctx: ToolContext): void {
     request.raw.on('close', () => {
       clearInterval(keepAlive);
       sseClients.delete(sessionId);
+      sseClientInfo.delete(sessionId);
     });
   });
 }

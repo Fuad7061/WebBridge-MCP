@@ -35,6 +35,23 @@ export interface BrowserManager {
   setTabName(name: string, page?: Page): void;
   getLastTabInfo(): { name: string | null; index: number };
   getTabStats(): Promise<Array<{ index: number; name: string | null; url: string; title: string; idleSeconds: number }>>;
+  // ── Dashboard management helpers ──
+  getStatus(): BrowserStatus;
+  getActiveIndex(): number;
+  activateTab(index: number): Promise<void>;
+  closeTab(index: number): Promise<void>;
+  renameTab(index: number, name: string | null): void;
+  restart(): Promise<void>;
+}
+
+export interface BrowserStatus {
+  connected: boolean;
+  version: string | null;
+  launchedAt: number | null;
+  restarts: number;
+  tabCount: number;
+  storedCookies: number;
+  idleCleanup: boolean;
 }
 
 export interface SessionStore {
@@ -59,6 +76,11 @@ export interface AppConfig {
   proxyUrl?: string;
   rateLimitMax: number;
   tabIdleTimeoutMs?: number;
+  dashboardPassword: string;
+  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  logToolCalls: boolean;
+  logRetentionDays: number;
+  logMaxSizeMb: number;
 }
 
 export interface ReconResult {

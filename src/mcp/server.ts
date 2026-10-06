@@ -26,7 +26,7 @@ export async function startMCPServer(ctx: ToolContext): Promise<void> {
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
-    const result = await registry.callTool(name, (args as Record<string, unknown>) || {});
+    const result = await registry.callTool(name, (args as Record<string, unknown>) || {}, 'stdio');
     return {
       content: result.content.map(c => ({
         type: c.type,

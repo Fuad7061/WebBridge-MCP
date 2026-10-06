@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebBridge MCP — Control Plane &amp; Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="/dashboard/assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/dashboard/assets/style.css">
+</head>
+<body>
+
+  <!-- ── App Header ─────────────────────────────────────────── -->
+  <header class="app-header">
+    <div style="display:flex; align-items:center; gap:1.25rem;">
+      <a href="#overview" class="brand" id="brandLink">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>WebBridge MCP <span class="version-tag">v1.0</span></h1>
+        </div>
+      </a>
+
+      <div class="header-status-strip">
+        <div class="status-pill">
+          <span class="status-dot" id="headerStatusDot"></span>
+          <span id="headerBrowserText">Browser Idle</span>
+        </div>
+        <div class="status-pill">
+          <span id="headerCpuMem">CPU 0% · RSS 0 MB</span>
+        </div>
+        <div class="status-pill">
+          <span id="headerStorage">Data: 0 MB</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-sm btn-secondary" onclick="restartBrowser()" title="Restart Chromium Engine">
+        Restart Browser
+      </button>
+      <button class="btn btn-sm btn-secondary" onclick="handleLogout()" id="headerLogoutBtn" title="Lock Dashboard">
+        Lock
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Navigation Bar ─────────────────────────────────────── -->
+  <nav class="nav-container" aria-label="Main Navigation">
+    <button class="nav-tab active" data-target="overview" id="navTabOverview">
+      Overview
+    </button>
+    <button class="nav-tab" data-target="tabs" id="navTabTabs">
+      Browser Tabs <span class="nav-badge" id="navTabsBadge">0</span>
+    </button>
+    <button class="nav-tab" data-target="logs" id="navTabLogs">
+      Logs &amp; Storage
+    </button>
+    <button class="nav-tab" data-target="settings" id="navTabSettings">
+      Settings
+    </button>
+    <button class="nav-tab" data-target="env" id="navTabEnv">
+      Environment
+    </button>
+    <button class="nav-tab" data-target="tools" id="navTabTools">
+      Tools Playground
+    </button>
+    <button class="nav-tab" data-target="storage" id="navTabStorage">
+      Storage &amp; Maintenance
+    </button>
+  </nav>
+
+  <!-- ── Main Views Container ───────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- ── View 1: Overview ──────────────────────────────────── -->
+    <section class="view-section active" id="view-overview">
+      <div id="overviewWarnings"></div>
+
+      <div class="grid-cols-4">
+        <div class="stat-card">
+          <div class="stat-label">Session Calls <span>MCP + REST</span></div>
+          <div class="stat-value" id="statCalls">0</div>
+          <div class="stat-sub">Errors: <span id="statErrors" class="text-muted">0</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Container CPU <span>Process</span></div>
+          <div class="stat-value" id="statCpu">0%</div>
+          <div class="stat-sub">Active load average</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Memory Usage <span>RSS</span></div>
+          <div class="stat-value" id="statMemRss">0 MB</div>
+          <div class="stat-sub">Node.js + browser processes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Open Tabs <span>Chromium</span></div>
+          <div class="stat-value" id="statTabCount">0</div>
+          <div class="stat-sub">Data Used: <span id="statStorageUsed">0 MB</span></div>
+        </div>
+      </div>
+
+      <div class="grid-cols-2">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Browser Engine Status</div>
+              <div class="card-subtitle">Playwright Chromium &amp; Stealth Anti-Detection</div>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="launchBrowser()">Launch Now</button>
+          </div>
+          <div id="overviewBrowserDetails">
+            <p class="text-muted">Loading browser details...</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Storage &amp; Environment</div>
+              <div class="card-subtitle">Persistent volume /app/data status</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="switchView('storage')">Manage</button>
+          </div>
+          <div id="overviewSystemDetails">
+            <p class="text-muted">Loading system details...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-cols-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Most Active MCP Tools</div>
+            <button class="btn btn-sm btn-secondary" onclick="switchView('tools')">Explore</button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Tool Name</th>
+                  <th>Calls</th>
+                  <th>Errors</th>
+                  <th>Avg Latency</th>
+                  <th>Peak</th>
+                </tr>
+              </thead>
+              <tbody id="overviewTopTools">
+                <tr><td colspan="5" class="text-muted" style="text-align:center;">Loading tool metrics...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Recent Invocations</div>
+            <button class="btn btn-sm btn-secondary" onclick="switchView('logs')">Live Logs</button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Tool</th>
+                  <th>Source</th>
+                  <th>Duration</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="overviewRecentCalls">
+                <tr><td colspan="5" class="text-muted" style="text-align:center;">No recent activity</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── View 2: Browser Tabs ──────────────────────────────── -->
+    <section class="view-section" id="view-tabs">
+      <div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <h2 style="font-size:1.15rem; font-weight:700;">Open Browser Tabs</h2>
+            <p class="card-subtitle">Inspect, switch, preview, or close active browser pages.</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="openNewTabDialog()" id="btnOpenNewTab">
+              + New Tab
+            </button>
+            <button class="btn btn-secondary" onclick="closeOtherTabs()" id="btnCloseOtherTabs">
+              Close Other Tabs
+            </button>
+            <button class="btn btn-secondary" onclick="loadTabs()" id="btnRefreshTabs">
+              Refresh
+            </button>
+            <span class="badge badge-info" id="tabsTotalCount">0 Tabs</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs-grid" id="tabsGrid">
+        <p class="text-muted">Loading browser tabs...</p>
+      </div>
+    </section>
+
+    <!-- ── View 3: Logs & Storage ────────────────────────────── -->
+    <section class="view-section" id="view-logs">
+      <div class="grid-cols-2" style="grid-template-columns: 1fr 340px; margin-bottom:0;">
+        
+        <!-- Live Terminal -->
+        <div class="logs-container">
+          <div class="logs-toolbar">
+            <div class="logs-filters">
+              <span class="badge badge-info" id="logsStreamIndicator">Live Stream</span>
+              <select class="select" id="logLevelFilter" style="width:110px; padding:0.35rem 0.6rem;">
+                <option value="all">All Levels</option>
+                <option value="debug">Debug</option>
+                <option value="info">Info</option>
+                <option value="warn">Warn</option>
+                <option value="error">Error</option>
+              </select>
+              <input type="text" class="input" id="logSearchInput" placeholder="Filter message..." style="width:160px; padding:0.35rem 0.6rem;" />
+            </div>
+
+            <div style="display:flex; gap:0.4rem;">
+              <button class="btn btn-sm btn-secondary" onclick="returnToLiveLogs()" title="Return to live tail">Live</button>
+              <button class="btn btn-sm btn-primary" id="btnAutoScroll" onclick="toggleAutoScroll()" title="Toggle auto-scroll">Scroll</button>
+              <button class="btn btn-sm btn-secondary" id="btnPauseLogs" onclick="togglePauseLogs()" title="Pause incoming logs">Pause</button>
+              <button class="btn btn-sm btn-secondary" onclick="clearLogsTerminal()" title="Clear terminal screen">Clear</button>
+            </div>
+          </div>
+
+          <div class="logs-terminal" id="logsTerminal"></div>
+        </div>
+
+        <!-- Disk Log Files & Storage Pruner -->
+        <div class="card" style="display:flex; flex-direction:column; gap:1.25rem;">
+          <div>
+            <div class="card-title">Storage Optimization</div>
+            <div class="card-subtitle">Delete log files to immediately reclaim disk space.</div>
+          </div>
+
+          <div style="background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:1rem; text-align:center;">
+            <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-dim);">Total Log Disk Usage</div>
+            <div style="font-size:1.6rem; font-weight:700; color:var(--accent-sky); margin:0.25rem 0;" id="logFilesTotalSize">0 MB</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">Stored under /app/data/logs</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.5rem;">
+            <button class="btn btn-danger" onclick="deleteAllLogs()" id="btnDeleteAllLogs" style="width:100%;">
+              Clear All Logs (Optimize Disk)
+            </button>
+            <button class="btn btn-secondary" onclick="pruneLogs()" id="btnPruneLogs" style="width:100%;">
+              Prune Expired Logs
+            </button>
+          </div>
+
+          <div>
+            <div style="font-size:0.85rem; font-weight:600; margin-bottom:0.6rem; color:var(--text-muted);">Log Files on Disk</div>
+            <div id="logFilesList" style="max-height:220px; overflow-y:auto;">
+              <p class="text-muted" style="font-size:0.8rem;">Loading log files...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── View 4: Settings ──────────────────────────────────── -->
+    <section class="view-section" id="view-settings">
+      <div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <h2 style="font-size:1.15rem; font-weight:700;">System Settings</h2>
+            <p class="card-subtitle">Changes are saved to <code>/app/data/settings.json</code> and persist across Coolify redeployments.</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <button class="btn btn-secondary" onclick="exportSettingsBackup()" id="btnExportSettings">
+              Export Backup
+            </button>
+            <label class="btn btn-secondary" style="cursor:pointer; margin-bottom:0;">
+              Import Backup
+              <input type="file" accept=".json" style="display:none;" onchange="importSettingsBackup(event)" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="settingsContainer">
+        <p class="text-muted">Loading settings...</p>
+      </div>
+    </section>
+
+    <!-- ── View 5: Environment ───────────────────────────────── -->
+    <section class="view-section" id="view-env">
+      <div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <h2 style="font-size:1.15rem; font-weight:700;">Environment Variables</h2>
+            <p class="card-subtitle">Manage runtime overrides in <code>/app/data/settings.json</code> or view active container variables.</p>
+          </div>
+          <button class="btn btn-primary" onclick="openAddEnvModal()" id="btnAddEnvVar">
+            + Add Custom Variable
+          </button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <div class="card-title">Persistent Custom Overrides (/app/data)</div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:280px;">Variable Name</th>
+                <th>Value</th>
+                <th style="width:80px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="customEnvTableBody">
+              <tr><td colspan="3" class="text-muted" style="text-align:center;">Loading custom variables...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Active Process Environment (process.env)</div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:280px;">Variable Name</th>
+                <th>Current Runtime Value</th>
+                <th style="width:140px;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="runtimeEnvTableBody">
+              <tr><td colspan="3" class="text-muted" style="text-align:center;">Loading runtime variables...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── View 6: Tools Playground ──────────────────────────── -->
+    <section class="view-section" id="view-tools">
+      <div class="grid-cols-2" style="grid-template-columns: 360px 1fr;">
+        
+        <div class="card" style="max-height:calc(100vh - 200px); overflow-y:auto;">
+          <div class="card-header">
+            <div class="card-title">Registered MCP Tools</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.6rem;" id="toolsList">
+            <p class="text-muted">Loading registered tools...</p>
+          </div>
+        </div>
+
+        <div class="card" style="display:flex; flex-direction:column; gap:1.25rem;">
+          <div>
+            <h2 id="selectedToolName" style="font-size:1.15rem; font-weight:700; color:var(--accent-sky);">Select a tool</h2>
+            <p class="text-muted" id="selectedToolDesc" style="font-size:0.85rem; margin-top:0.25rem;">Select any tool from the list to test execution.</p>
+          </div>
+
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Parameters (JSON):</label>
+            <textarea class="textarea textarea-code" id="toolArgsInput" rows="7" style="width:100%;">{}</textarea>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end;">
+            <button class="btn btn-primary" onclick="executeSelectedTool()" id="btnExecuteTool">
+              Execute Tool
+            </button>
+          </div>
+
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Execution Output:</label>
+            <pre class="textarea-code" id="toolOutputPre" style="background:#06090e; border:1px solid var(--border-card); border-radius:var(--radius-md); padding:1rem; max-height:300px; overflow-y:auto; color:var(--text-main);">// Output will appear here</pre>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── View 7: Storage & Maintenance ─────────────────────── -->
+    <section class="view-section" id="view-storage">
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Persistent Data Storage (/app/data)</div>
+            <div class="card-subtitle">Path: <code id="storageDataDir">/app/data</code></div>
+          </div>
+          <div id="storageMountStatus"></div>
+        </div>
+
+        <div>
+          <div class="storage-bar-wrapper" id="storageProgressBar"></div>
+          <div class="storage-legend">
+            <div class="legend-item"><span class="legend-color seg-logs"></span> Logs</div>
+            <div class="legend-item"><span class="legend-color seg-profile"></span> Browser Profile / Cache</div>
+            <div class="legend-item"><span class="legend-color seg-session"></span> Session Store</div>
+            <div class="legend-item"><span class="legend-color seg-stats"></span> Usage Stats</div>
+            <div class="legend-item"><span class="legend-color seg-settings"></span> Settings</div>
+            <div class="legend-item"><span class="legend-color seg-other"></span> Other Files</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-cols-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Storage Breakdown &amp; Cleanup</div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>Path</th>
+                  <th>Size</th>
+                  <th>Files</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="storageItemsTbody">
+                <tr><td colspan="5" class="text-muted" style="text-align:center;">Loading storage items...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="display:flex; flex-direction:column; gap:1.25rem;">
+          <div class="card-header">
+            <div class="card-title">System Volume &amp; Operations</div>
+          </div>
+
+          <div style="background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:1rem;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+              <span class="text-muted">Total Volume:</span>
+              <strong id="storageVolumeTotal">0 GB</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+              <span class="text-muted">Used Disk Space:</span>
+              <strong id="storageVolumeUsed">0 GB</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+              <span class="text-muted">Available Free Disk:</span>
+              <strong id="storageVolumeFree" style="color:var(--accent-emerald);">0 GB</strong>
+            </div>
+          </div>
+
+          <div>
+            <h4 style="font-size:0.95rem; font-weight:600; margin-bottom:0.5rem;">System Restart</h4>
+            <p class="text-muted" style="font-size:0.8rem; margin-bottom:0.85rem;">Cleanly restart the WebBridge MCP server container. In Coolify / Docker, the container supervisor will reload the process with fresh environment variables.</p>
+            <button class="btn btn-danger" onclick="restartServer()" id="btnRestartServer">
+              Restart WebBridge Server
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Floating Save Changes Bar ──────────────────────────── -->
+  <aside class="save-changes-bar" id="saveChangesBar" aria-label="Unsaved Changes">
+    <span id="pendingChangesCount" style="font-weight:600; color:var(--text-main); font-size:0.85rem;">1 setting modified</span>
+    <div style="display:flex; gap:0.5rem;">
+      <button class="btn btn-sm btn-secondary" onclick="discardPendingSettings()">Discard</button>
+      <button class="btn btn-sm btn-primary" onclick="savePendingSettings()">Save to /app/data</button>
+    </div>
+  </aside>
+
+  <!-- ── Modals (<dialog closedby="any">) ───────────────────── -->
+
+  <!-- Modal 1: Open New Tab -->
+  <dialog id="newTabModal" closedby="any" aria-labelledby="newTabModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="newTabModalTitle">Open New Browser Tab</h3>
+        <button class="btn btn-sm btn-secondary" onclick="closeModal('newTabModal')" aria-label="Close">&times;</button>
+      </div>
+      <form onsubmit="submitNewTab(event)">
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">URL to open:</label>
+            <input type="text" class="input" id="newTabUrl" required value="https://example.com" />
+          </div>
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Friendly Tab Name / Alias (optional):</label>
+            <input type="text" class="input" id="newTabName" placeholder="e.g. google, login_page" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('newTabModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Open Tab</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal 2: Rename Tab -->
+  <dialog id="renameTabModal" closedby="any" aria-labelledby="renameTabModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="renameTabModalTitle">Set Tab Name / Alias</h3>
+        <button class="btn btn-sm btn-secondary" onclick="closeModal('renameTabModal')" aria-label="Close">&times;</button>
+      </div>
+      <form onsubmit="submitRenameTab(event)">
+        <input type="hidden" id="renameTabIndex" />
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Friendly Tab Alias:</label>
+            <input type="text" class="input" id="renameTabName" placeholder="Leave blank to remove alias" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('renameTabModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Alias</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal 3: Navigate Tab -->
+  <dialog id="navigateTabModal" closedby="any" aria-labelledby="navigateTabModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="navigateTabModalTitle">Navigate Tab to URL</h3>
+        <button class="btn btn-sm btn-secondary" onclick="closeModal('navigateTabModal')" aria-label="Close">&times;</button>
+      </div>
+      <form onsubmit="submitNavigateTab(event)">
+        <input type="hidden" id="navigateTabIndex" />
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Target URL:</label>
+            <input type="url" class="input" id="navigateTabUrl" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('navigateTabModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Navigate</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Modal 4: Screenshot Preview -->
+  <dialog id="screenshotModal" closedby="any" aria-labelledby="screenshotModalTitle" style="max-width:900px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="screenshotModalTitle">Live Tab Screenshot</h3>
+        <button class="btn btn-sm btn-secondary" onclick="closeModal('screenshotModal')" aria-label="Close">&times;</button>
+      </div>
+      <div style="background:#000; border-radius:var(--radius-md); overflow:hidden; display:flex; align-items:center; justify-content:center; min-height:360px;">
+        <img id="screenshotPreviewImg" alt="Live Screenshot" style="max-width:100%; height:auto; display:block;" />
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.75rem;" id="screenshotCaption">
+        Capturing live tab viewport...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('screenshotModal')">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal 5: Add Custom Env Var -->
+  <dialog id="addEnvModal" closedby="any" aria-labelledby="addEnvModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="addEnvModalTitle">Add Custom Variable</h3>
+        <button class="btn btn-sm btn-secondary" onclick="closeModal('addEnvModal')" aria-label="Close">&times;</button>
+      </div>
+      <form onsubmit="submitAddEnv(event)">
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Variable Name (KEY):</label>
+            <input type="text" class="input input-code" id="addEnvKey" required placeholder="CUSTOM_API_KEY" />
+          </div>
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Value:</label>
+            <input type="text" class="input input-code" id="addEnvValue" required placeholder="secret_value" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addEnvModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save to /app/data</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- ── Login Overlay ──────────────────────────────────────── -->
+  <div class="login-overlay" id="loginOverlay" style="display:none;">
+    <div class="login-card">
+      <div class="brand-icon" style="margin:0 auto 1.25rem; width:48px; height:48px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px; height:28px;">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+      </div>
+      <h2 style="font-size:1.35rem; font-weight:700; margin-bottom:0.35rem;">WebBridge Control Plane</h2>
+      <p class="text-muted" style="font-size:0.85rem; margin-bottom:1.5rem;">Enter the dashboard password or API auth token to continue.</p>
+
+      <form id="loginForm">
+        <div style="margin-bottom:1rem;">
+          <input type="password" class="input" id="loginPassword" placeholder="Dashboard Password or API Token" required autofocus />
+        </div>
+        <div id="loginError" style="font-size:0.8rem; color:var(--accent-rose); min-height:1.25rem; margin-bottom:0.75rem;"></div>
+        <button type="submit" class="btn btn-primary" id="loginSubmitBtn" style="width:100%; padding:0.75rem;">
+          Unlock Dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Toast Notifications Container ──────────────────────── -->
+  <div id="toastContainer" aria-live="polite"></div>
+
+  <script src="/dashboard/assets/app.js"></script>
+</body>
+</html>

@@ -6,6 +6,8 @@ import { startMCPServer } from './mcp/server.js';
 import { createBrowserManager } from './browser/engine.js';
 import { createSessionStore } from './browser/session.js';
 import type { AppConfig } from './types/index.js';
+import { logger } from './logger.js';
+import { metrics } from './metrics.js';
 
 async function main() {
   program
@@ -27,6 +29,15 @@ async function main() {
         authToken: options.authToken || envConfig.authToken,
         stealthLevel: (options.stealthLevel as AppConfig['stealthLevel']) || envConfig.stealthLevel,
       };
+
+      logger.init({
+        dataDir: config.dataDir,
+        level: config.logLevel,
+        retentionDays: config.logRetentionDays,
+        maxSizeMb: config.logMaxSizeMb,
+        stdio: config.mode === 'stdio',
+      });
+      metrics.init(config.dataDir);
 
       if (config.mode === 'http' && !config.authToken) {
         console.warn('WARNING: No auth token set. Set WEBBRIDGE_AUTH_TOKEN or pass --auth-token');

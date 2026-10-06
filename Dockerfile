@@ -16,21 +16,23 @@ ENV WEBBRIDGE_MODE=http
 ENV WEBBRIDGE_PORT=3456
 ENV WEBBRIDGE_HOST=0.0.0.0
 ENV WEBBRIDGE_STEALTH_LEVEL=stealth
-ENV WEBBRIDGE_DATA_DIR=/data
+ENV WEBBRIDGE_DATA_DIR=/app/data
 ENV WEBBRIDGE_HEADLESS=new
 ENV WEBBRIDGE_MAX_CONCURRENCY=5
 ENV WEBBRIDGE_RATE_LIMIT_MAX=60
 
 WORKDIR /app
 
-# Copy built dist and install production deps + Playwright browser
+# Copy built dist, public assets, and install production deps + Playwright browser
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/package*.json ./
 RUN npm ci --omit=dev && \
-    npx playwright install --with-deps chromium
+    npx playwright install --with-deps chromium && \
+    mkdir -p /app/data
 
 EXPOSE 3456
-VOLUME ["/data"]
+VOLUME ["/app/data"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD node --input-type=module -e "import http from 'node:http'; http.get('http://127.0.0.1:3456/health', r => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"

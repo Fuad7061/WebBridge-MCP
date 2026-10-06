@@ -12,12 +12,24 @@
     "port": 3456
   },
   "env": {
+    "WEBBRIDGE_DATA_DIR": {
+      "value": "/app/data",
+      "description": "Persistent data directory for settings, logs, and sessions"
+    },
     "WEBBRIDGE_AUTH_TOKEN": {
       "value": "",
       "description": "API key for authentication (required)"
     },
+    "WEBBRIDGE_DASHBOARD_PASSWORD": {
+      "value": "",
+      "description": "Optional separate password for the WebBridge Dashboard"
+    },
+    "WEBBRIDGE_LOG_LEVEL": {
+      "value": "info",
+      "description": "Logging level: debug, info, warn, error"
+    },
     "WEBBRIDGE_HEADLESS": {
-      "value": "true",
+      "value": "new",
       "description": "Browser headless mode: true, false, or new"
     },
     "WEBBRIDGE_STEALTH_LEVEL": {
@@ -36,5 +48,8 @@
       "value": "60",
       "description": "Requests per minute per IP"
     }
+  },
+  "storage": {
+    "persistent_volume": "/app/data"
   }
 }

@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import type { AppConfig } from './types/index.js';
+import { initSettings, resolveDataDir } from './settings.js';
 
 function env(key: string, fallback?: string): string {
   return process.env[key] ?? fallback ?? '';
@@ -35,6 +36,8 @@ function loadEnvFile(): void {
 }
 
 loadEnvFile();
+// Apply persistent dashboard overrides (DATA_DIR/settings.json) on top of the environment.
+initSettings();
 
 function parseHeadless(val: string): boolean | 'new' {
   if (val === 'new') return 'new';
@@ -51,11 +54,16 @@ export function getConfig(): AppConfig {
     stealthLevel: (env('WEBBRIDGE_STEALTH_LEVEL', 'stealth') as AppConfig['stealthLevel']),
     headless: parseHeadless(env('WEBBRIDGE_HEADLESS', 'new')),
     chromePath: env('CHROME_PATH', ''),
-    dataDir: env('WEBBRIDGE_DATA_DIR', join(process.cwd(), 'data')),
+    dataDir: resolveDataDir(),
     maxConcurrency: parseInt(env('WEBBRIDGE_MAX_CONCURRENCY', '5'), 10),
     typingDelayMs: parseInt(env('WEBBRIDGE_TYPING_DELAY_MS', '50'), 10),
-    proxyUrl: env('WEBBRIDGE_PROXY_URL', undefined),
+    proxyUrl: env('WEBBRIDGE_PROXY_URL', '') || undefined,
     rateLimitMax: parseInt(env('WEBBRIDGE_RATE_LIMIT_MAX', '60'), 10),
     tabIdleTimeoutMs: parseInt(env('WEBBRIDGE_TAB_IDLE_TIMEOUT_MS', '0'), 10),
+    dashboardPassword: env('WEBBRIDGE_DASHBOARD_PASSWORD', ''),
+    logLevel: (['debug', 'info', 'warn', 'error'].includes(env('WEBBRIDGE_LOG_LEVEL', 'info')) ? env('WEBBRIDGE_LOG_LEVEL', 'info') : 'info') as AppConfig['logLevel'],
+    logToolCalls: envBool('WEBBRIDGE_LOG_TOOL_CALLS', true),
+    logRetentionDays: parseInt(env('WEBBRIDGE_LOG_RETENTION_DAYS', '7'), 10) || 7,
+    logMaxSizeMb: parseInt(env('WEBBRIDGE_LOG_MAX_SIZE_MB', '50'), 10) || 50,
   };
 }

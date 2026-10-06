@@ -17,8 +17,9 @@
 - **WebMCP bridge**: Discover and invoke Google's WebMCP tools on Chrome 146+ pages
 - **Cookie persistence**: Export/import sessions, raw header string parsing, survive container restarts and browser crashes (auto-replay on crash recovery)
 - **n8n-ready**: SSE + Streamable HTTP transports, persistent browser context across multi-step workflows
-- **Cloud-ready**: Docker multi-stage, Coolify deploy config
-- **Auth**: API key authentication (Bearer `wbr_*` tokens)
+- **Cloud-ready**: Docker multi-stage, Coolify deploy config with persistent `/app/data` volume
+- **Control Plane Dashboard**: Built-in modern web UI (`/dashboard`) with real-time browser tab inspection & screenshots, live log streaming, one-click disk storage optimization, persistent settings & environment variable management, and MCP tool playground
+- **Auth**: API key authentication (Bearer `wbr_*` tokens) and optional dashboard password with session security
 
 ## Quick Start
 
@@ -26,12 +27,15 @@
 # Install
 npm install -g webridge-mcp
 
-# Start HTTP server (for cURL, n8n, or any HTTP client)
+# Start HTTP server (for cURL, n8n, dashboard, or any HTTP client)
 WEBBRIDGE_AUTH_TOKEN=wbr_your-key webridge start --mode=http
 
-# Or via Docker
+# Access the Control Plane Dashboard in your browser:
+# http://localhost:3456/dashboard/
+
+# Or via Docker with persistent storage mount:
 docker build -t webridge-mcp .
-docker run -p 3456:3456 -e WEBBRIDGE_AUTH_TOKEN=wbr_your-key webridge-mcp
+docker run -p 3456:3456 -v /your/host/path:/app/data -e WEBBRIDGE_AUTH_TOKEN=wbr_your-key webridge-mcp
 ```
 
 ## Usage
@@ -707,28 +711,71 @@ Returns a complete page analysis: elements with selectors, forms with fields, he
 
 | Variable | Default | Description |
 |---|---|---|
-| `WEBBRIDGE_AUTH_TOKEN` | — | API key for authentication |
-| `WEBBRIDGE_MODE` | `http` | `http` or `stdio` |
+| `WEBBRIDGE_AUTH_TOKEN` | — | API key for authentication (Bearer token) |
+| `WEBBRIDGE_DASHBOARD_PASSWORD` | — | Dedicated password for dashboard UI (falls back to auth token) |
+| `WEBBRIDGE_MODE` | `http` | Server mode: `http` or `stdio` |
 | `WEBBRIDGE_PORT` | `3456` | HTTP server port |
 | `WEBBRIDGE_HOST` | `0.0.0.0` | Bind address |
+| `WEBBRIDGE_DATA_DIR` | `/app/data` | Persistent data directory (`/app/data` in Docker, `./data` local) |
+| `WEBBRIDGE_LOG_LEVEL` | `info` | Minimum log severity: `debug`, `info`, `warn`, `error` |
+| `WEBBRIDGE_LOG_RETENTION_DAYS` | `7` | Retention days for JSONL log files |
+| `WEBBRIDGE_LOG_MAX_SIZE_MB` | `50` | Maximum total disk storage budget for log files |
 | `WEBBRIDGE_STEALTH_LEVEL` | `stealth` | `basic`, `standard`, or `stealth` |
-| `WEBBRIDGE_HEADLESS` | `true` | `true`, `false`, or `new` |
-| `WEBBRIDGE_DATA_DIR` | `./data` | Persistent data directory |
-| `WEBBRIDGE_TYPING_DELAY_MS` | `50` | Delay between keystrokes |
+| `WEBBRIDGE_HEADLESS` | `new` | `new` (modern headless), `true`, or `false` |
+| `WEBBRIDGE_TYPING_DELAY_MS` | `50` | Delay between keystrokes in ms |
 | `WEBBRIDGE_MAX_CONCURRENCY` | `5` | Max browser contexts |
 | `WEBBRIDGE_RATE_LIMIT_MAX` | `60` | Requests/min per IP |
-| `WEBBRIDGE_TAB_IDLE_TIMEOUT_MS` | `0` | Auto-close idle tabs after N ms (`0` = disabled) |
+| `WEBBRIDGE_TAB_IDLE_TIMEOUT_MS` | `0` | Discard background idle tabs after N ms (`0` = disabled) |
 | `CHROME_PATH` | auto | Chrome/Chromium binary path |
+
+## Control Plane Dashboard (`/dashboard`)
+
+WebBridge MCP includes a comprehensive web dashboard for management and observability:
+
+- **Executive Overview**: Real-time CPU, RAM (RSS + container cgroup limits), active tabs counter, persistent volume mount status, and usage analytics.
+- **Browser Tabs Management**: Live cards for all open Chromium pages with live screenshots, active tab indicators, friendly aliases, and controls to activate, reload, navigate, or close tabs.
+- **Live Logs & Storage Optimizer**: Real-time SSE streaming logs with severity coloring, search filtering, and one-click disk space reclamation (**Clear All Logs**, delete individual files, and retention pruning).
+- **Settings Control**: Edit any runtime configuration parameter with live apply where possible, value origin badges (Dashboard Override, Env, Default), and export/import backup functionality.
+- **Environment Overrides**: Manage persistent custom variables stored in `/app/data/settings.json` that survive container redeployments.
+- **MCP Tools Playground**: Inspect registered tool schemas and trigger test executions interactively with visual output.
+- **Storage & Maintenance**: Visual disk usage gauge and breakdown of `/app/data` (logs, browser profile cache, session store, stats), plus server restart controls.
+
+## Coolify Deployment (Hetzner VPS)
+
+1. **Persistent Volume**: In Coolify, configure a persistent storage volume mount:
+   ```
+   Mount Path: /app/data
+   ```
+   All settings (`/app/data/settings.json`), log files (`/app/data/logs`), session stores (`/app/data/session-store.json`), and Chromium browser profiles (`/app/data/chrome-profile`) reside in `/app/data` and will **never be lost across container redeploys**.
+
+2. **Environment Variables**:
+   ```env
+   WEBBRIDGE_AUTH_TOKEN=wbr_your-super-secret-token
+   WEBBRIDGE_DASHBOARD_PASSWORD=your-dashboard-login-password
+   WEBBRIDGE_DATA_DIR=/app/data
+   WEBBRIDGE_HEADLESS=new
+   WEBBRIDGE_STEALTH_LEVEL=stealth
+   ```
+
+3. **Accessing Dashboard**:
+   Navigate to `https://your-domain.com/dashboard/` and log in with your dashboard password or auth token.
 
 ## Architecture
 
 ```
-AI Agent / n8n / cURL
+AI Agent / n8n / cURL / Web Dashboard
     │
-    ├── MCP Protocol (stdio / SSE / Streamable HTTP) ──┐
+    ├── Control Plane Web UI (/dashboard) ─────────────┐
+    ├── MCP Protocol (stdio / SSE / Streamable HTTP) ──┤
     │                                                    │
     ▼                                                    ▼
 WebBridge MCP Server ───── HTTP REST API (port 3456)
+    │
+    ├── Persistent Volume (/app/data)
+    │   ├── settings.json (runtime overrides)
+    │   ├── logs/ (daily JSONL files)
+    │   ├── session-store.json
+    │   └── chrome-profile/
     │
     ▼
 Playwright Engine (Chromium)
