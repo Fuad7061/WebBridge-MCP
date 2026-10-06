@@ -375,7 +375,15 @@
           </div>
 
           <div>
-            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Parameters (JSON):</label>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.5rem;">
+              <label style="font-size:0.85rem; font-weight:600; margin-bottom:0;">Parameters (JSON):</label>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span class="text-muted" style="font-size:0.75rem;">Target Tab:</span>
+                <select id="playgroundTabSelect" class="select" style="font-size:0.75rem; padding:0.2rem 0.6rem; min-width:140px;" onchange="onPlaygroundTabChange(this.value)">
+                  <option value="">(Active Tab)</option>
+                </select>
+              </div>
+            </div>
             <textarea class="textarea textarea-code" id="toolArgsInput" rows="7" style="width:100%;">{}</textarea>
           </div>
 

@@ -22,8 +22,8 @@ export const navigationTools: ToolDefinition[] = [
         waitUntil: { type: 'string', enum: ['load', 'domcontentloaded', 'networkidle'], default: 'load' },
         timeout: { type: 'number', default: 30000 },
         tabIndex: { type: 'number', description: 'Tab index to navigate in (default: active tab)' },
-        tabName: { type: 'string', description: 'Tab name to navigate in (overrides tabIndex)' },
-        name: { type: 'string', description: 'Register this tab with a friendly name (e.g. "amazon") — enables tabName targeting on subsequent calls. Same as set_tab_name but done inline with navigation.' },
+        tabName: { type: 'string', description: 'Friendly name for this tab (e.g. "google", "dashboard"). Navigates in existing tab or creates a new one. Auto-derived from URL domain if omitted.' },
+        name: { type: 'string', description: 'Alias for tabName — register this tab with a friendly name' },
       },
       required: ['url'],
     },
@@ -32,8 +32,9 @@ export const navigationTools: ToolDefinition[] = [
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return { content: [{ type: 'text', text: 'Only http/https URLs are allowed' }], isError: true };
       }
+      const targetName = (args.tabName ? String(args.tabName).trim() : '') || (args.name ? String(args.name).trim() : '');
       const tabIndex = args.tabIndex !== undefined && args.tabIndex !== '' && !isNaN(Number(args.tabIndex)) ? Number(args.tabIndex) : undefined;
-      const tabName = args.tabName !== undefined && String(args.tabName).trim() !== '' ? String(args.tabName).trim() : undefined;
+      const tabName = targetName || undefined;
       const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         const validWait = ['load', 'domcontentloaded', 'networkidle', 'commit'];
@@ -47,7 +48,7 @@ export const navigationTools: ToolDefinition[] = [
           timeout,
         });
 
-        const explicitName = args.name ? String(args.name).trim() : (tabName || deriveTabName(url));
+        const explicitName = targetName || deriveTabName(url);
         if (explicitName) {
           ctx.browser.setTabName(explicitName, page);
         }

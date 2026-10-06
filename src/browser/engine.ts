@@ -34,9 +34,17 @@ export function createBrowserManager(config: AppConfig) {
     const target = page || _page;
     if (!target) throw new Error('No page available to name');
     _tabNames.set(name, target);
+    _lastTabName = name;
+    if (_context) {
+      const idx = _context.pages().indexOf(target);
+      if (idx >= 0) _lastTabIndex = idx;
+    }
     target.once('close', () => {
       for (const [n, p] of _tabNames) {
         if (p === target) { _tabNames.delete(n); }
+      }
+      if (_lastTabName === name) {
+        _lastTabName = null;
       }
     });
   }
@@ -46,7 +54,15 @@ export function createBrowserManager(config: AppConfig) {
   let _lastTabIndex = 0;
 
   function getLastTabInfo(): { name: string | null; index: number } {
-    return { name: _lastTabName, index: _lastTabIndex };
+    let name = _lastTabName;
+    if (!name && _page) {
+      for (const [n, p] of _tabNames) {
+        if (p === _page && !p.isClosed()) { name = n; break; }
+      }
+    }
+    const pages = _context ? _context.pages() : [];
+    const index = (_page && pages.includes(_page)) ? pages.indexOf(_page) : _lastTabIndex;
+    return { name: name || null, index: index >= 0 ? index : _lastTabIndex };
   }
 
   // ── Tab activity tracking + idle cleanup ────────────────────────
@@ -239,7 +255,15 @@ export function createBrowserManager(config: AppConfig) {
         }
 
         // Track which tab was resolved (for output enrichment)
-        _lastTabName = cleanName || null;
+        if (cleanName) {
+          _lastTabName = cleanName;
+        } else {
+          let foundName: string | null = null;
+          for (const [n, p] of _tabNames) {
+            if (p === _page && !p.isClosed()) { foundName = n; break; }
+          }
+          _lastTabName = foundName;
+        }
         _lastTabIndex = context.pages().indexOf(_page);
         updateActivity(_page);
 

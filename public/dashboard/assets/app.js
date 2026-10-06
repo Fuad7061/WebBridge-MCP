@@ -443,6 +443,7 @@
       const data = await api('/tabs');
       state.tabs = data.tabs || [];
       renderTabs(data);
+      updatePlaygroundTabSelect();
     } catch (e) {
       toast('Failed to load browser tabs: ' + e.message, 'error');
     }
@@ -499,6 +500,7 @@
             <button class="btn btn-sm btn-secondary" onclick="reloadTab(${t.index})">Reload</button>
           </div>
           <div style="display:flex; gap:0.4rem;">
+            <button class="btn btn-sm btn-secondary" onclick="targetTabInPlayground(${t.index}, '${escapeHtml(t.name || '')}')" title="Target this tab in Tools Playground">In Tools</button>
             <button class="btn btn-sm btn-secondary" onclick="renameTabDialog(${t.index}, '${escapeHtml(t.name || '')}')">Alias</button>
             <button class="btn btn-sm btn-secondary" onclick="navigateTabDialog(${t.index}, '${escapeHtml(t.url)}')">Go</button>
           </div>
@@ -1196,10 +1198,65 @@
       const data = await api('/tools');
       state.tools = data.tools || [];
       renderTools(data.tools);
+      if (!state.tabs || !state.tabs.length) {
+        api('/tabs').then(t => { state.tabs = t.tabs || []; updatePlaygroundTabSelect(); }).catch(() => {});
+      } else {
+        updatePlaygroundTabSelect();
+      }
     } catch (e) {
       toast('Failed to load tools: ' + e.message, 'error');
     }
   }
+
+  function updatePlaygroundTabSelect() {
+    const sel = document.getElementById('playgroundTabSelect');
+    if (!sel) return;
+    const currentVal = sel.value;
+    const tabs = state.tabs || [];
+    let opts = '<option value="">(Active Tab)</option>';
+    for (const t of tabs) {
+      const namePart = t.name ? ` "${t.name}"` : '';
+      const activePart = t.active ? ' [Active]' : '';
+      const label = `#${t.index}${namePart}${activePart} - ${t.host || 'tab'}`;
+      const val = t.name ? t.name : `index:${t.index}`;
+      opts += `<option value="${escapeHtml(val)}">${escapeHtml(label)}</option>`;
+    }
+    sel.innerHTML = opts;
+    if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
+      sel.value = currentVal;
+    }
+  }
+
+  window.onPlaygroundTabChange = function (val) {
+    const input = document.getElementById('toolArgsInput');
+    if (!input) return;
+    let args = {};
+    try {
+      args = JSON.parse(input.value || '{}');
+    } catch {
+      args = {};
+    }
+    delete args.tabName;
+    delete args.tabIndex;
+    if (val) {
+      if (val.startsWith('index:')) {
+        args.tabIndex = parseInt(val.slice(6), 10);
+      } else {
+        args.tabName = val;
+      }
+    }
+    input.value = JSON.stringify(args, null, 2);
+  };
+
+  window.targetTabInPlayground = function (index, name) {
+    switchView('tools');
+    const sel = document.getElementById('playgroundTabSelect');
+    if (sel) {
+      sel.value = name || `index:${index}`;
+      onPlaygroundTabChange(sel.value);
+    }
+    toast(`Targeting tab ${name ? `"${name}"` : `#${index}`} in playground`, 'info');
+  };
 
   function renderTools(tools) {
     const list = document.getElementById('toolsList');
@@ -1225,6 +1282,7 @@
     const sample = {};
     if (toolName === 'browser_navigate') {
       sample.url = 'https://google.com';
+      sample.tabName = 'google';
     } else if (toolName === 'browser_click') {
       sample.selector = 'button';
     } else if (toolName === 'browser_type') {
@@ -1234,6 +1292,11 @@
       sample.fullPage = false;
     } else if (toolName === 'browser_new_tab') {
       sample.url = 'https://google.com';
+      sample.tabName = 'google';
+    } else if (toolName === 'browser_switch_tab') {
+      sample.name = 'google';
+    } else if (toolName === 'browser_set_tab_name') {
+      sample.name = 'google';
     } else if (toolName === 'browser_evaluate') {
       sample.script = 'document.title';
     } else if (t.inputSchema && t.inputSchema.properties) {
@@ -1248,6 +1311,17 @@
         else sample[k] = null;
       }
     }
+
+    // Apply active playground tab selection if tool supports tab targeting
+    const tabSel = document.getElementById('playgroundTabSelect');
+    if (tabSel && tabSel.value && toolName !== 'browser_navigate' && toolName !== 'browser_new_tab') {
+      if (tabSel.value.startsWith('index:')) {
+        sample.tabIndex = parseInt(tabSel.value.slice(6), 10);
+      } else {
+        sample.tabName = tabSel.value;
+      }
+    }
+
     document.getElementById('toolArgsInput').value = JSON.stringify(sample, null, 2);
     document.getElementById('toolOutputPre').textContent = '// Output will appear here';
   };
@@ -1277,6 +1351,7 @@
         toast(`Tool executed in ${res.ms}ms`, 'success');
       }
       loadOverview();
+      api('/tabs').then(t => { state.tabs = t.tabs || []; updatePlaygroundTabSelect(); }).catch(() => {});
     } catch (e) {
       pre.textContent = `Error: ${e.message}`;
       toast(e.message, 'error');

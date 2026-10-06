@@ -38,7 +38,8 @@ export const tabTools: ToolDefinition[] = [
       type: 'object',
       properties: {
         url: { type: 'string', description: 'URL to open in the new tab' },
-        name: { type: 'string', description: 'Optional friendly name for this tab (e.g. "amazon", "admin") — use with tabName on any tool' },
+        name: { type: 'string', description: 'Friendly name for this tab (e.g. "amazon", "admin") — enables tabName targeting on any tool' },
+        tabName: { type: 'string', description: 'Alias for name' },
       },
     },
     handler: async (args, ctx) => {
@@ -48,7 +49,8 @@ export const tabTools: ToolDefinition[] = [
         if (args.url) {
           await newPage.goto(String(args.url), { waitUntil: 'load' });
         }
-        const tabName = args.name ? String(args.name) : (args.url ? deriveTabName(String(args.url)) : null);
+        const explicit = (args.tabName ? String(args.tabName).trim() : '') || (args.name ? String(args.name).trim() : '');
+        const tabName = explicit || (args.url ? deriveTabName(String(args.url)) : null);
         if (tabName) {
           ctx.browser.setTabName(tabName, newPage);
           return { content: [{ type: 'text', text: `Opened new tab "${tabName}": ${newPage.url()}` }] };
