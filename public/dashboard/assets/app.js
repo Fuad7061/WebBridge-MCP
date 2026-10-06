@@ -141,6 +141,9 @@
     else dialog.removeAttribute('open');
   }
 
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+
   // ── Authentication ─────────────────────────────────────────
   async function checkSession() {
     try {
@@ -1380,5 +1383,10 @@
     // Check initial authentication
     checkSession();
   });
+
+  // Expose missing functions to window for inline onclick handlers
+  window.handleLogout = handleLogout;
+  window.switchView = switchView;
+  window.loadTabs = loadTabs;
 
 })();
