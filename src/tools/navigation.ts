@@ -32,17 +32,22 @@ export const navigationTools: ToolDefinition[] = [
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return { content: [{ type: 'text', text: 'Only http/https URLs are allowed' }], isError: true };
       }
-      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
-      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const tabIndex = args.tabIndex !== undefined && args.tabIndex !== '' && !isNaN(Number(args.tabIndex)) ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined && String(args.tabName).trim() !== '' ? String(args.tabName).trim() : undefined;
       const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
-        
+        const validWait = ['load', 'domcontentloaded', 'networkidle', 'commit'];
+        const waitUntil = typeof args.waitUntil === 'string' && validWait.includes(args.waitUntil)
+          ? (args.waitUntil as 'load' | 'domcontentloaded' | 'networkidle')
+          : 'load';
+        const timeout = typeof args.timeout === 'number' && args.timeout > 0 ? args.timeout : 30000;
+
         await page.goto(url, {
-          waitUntil: (args.waitUntil as 'load' | 'domcontentloaded' | 'networkidle') || 'load',
-          timeout: (args.timeout as number) || 30000,
+          waitUntil,
+          timeout,
         });
 
-        const explicitName = args.name ? String(args.name) : deriveTabName(url);
+        const explicitName = args.name ? String(args.name).trim() : (tabName || deriveTabName(url));
         if (explicitName) {
           ctx.browser.setTabName(explicitName, page);
         }
@@ -64,8 +69,8 @@ export const navigationTools: ToolDefinition[] = [
       },
     },
     handler: async (args, ctx) => {
-      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
-      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const tabIndex = args.tabIndex !== undefined && args.tabIndex !== '' && !isNaN(Number(args.tabIndex)) ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined && String(args.tabName).trim() !== '' ? String(args.tabName).trim() : undefined;
       const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
@@ -87,8 +92,8 @@ export const navigationTools: ToolDefinition[] = [
       },
     },
     handler: async (args, ctx) => {
-      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
-      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const tabIndex = args.tabIndex !== undefined && args.tabIndex !== '' && !isNaN(Number(args.tabIndex)) ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined && String(args.tabName).trim() !== '' ? String(args.tabName).trim() : undefined;
       const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         
@@ -110,8 +115,8 @@ export const navigationTools: ToolDefinition[] = [
       },
     },
     handler: async (args, ctx) => {
-      const tabIndex = args.tabIndex !== undefined ? Number(args.tabIndex) : undefined;
-      const tabName = args.tabName !== undefined ? String(args.tabName) : undefined;
+      const tabIndex = args.tabIndex !== undefined && args.tabIndex !== '' && !isNaN(Number(args.tabIndex)) ? Number(args.tabIndex) : undefined;
+      const tabName = args.tabName !== undefined && String(args.tabName).trim() !== '' ? String(args.tabName).trim() : undefined;
       const { page } = await ctx.browser.acquireContext(tabIndex, tabName);
       try {
         

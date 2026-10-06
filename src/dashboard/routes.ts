@@ -521,7 +521,14 @@ export async function registerDashboard(app: FastifyInstance, ctx: ToolContext):
       const args = (req.body as Record<string, unknown>) || {};
       const started = Date.now();
       const result = await registry.callTool(name, args, 'dashboard');
-      return { ok: !result.isError, ms: Date.now() - started, result };
+      const errText = result.isError ? result.content.find(c => c.type === 'text')?.text || 'Tool execution failed' : undefined;
+      return {
+        ok: true,
+        success: !result.isError,
+        error: errText,
+        ms: Date.now() - started,
+        result,
+      };
     });
 
     // ── Server control ──

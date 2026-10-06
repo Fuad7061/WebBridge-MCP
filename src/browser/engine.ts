@@ -34,9 +34,9 @@ export function createBrowserManager(config: AppConfig) {
     const target = page || _page;
     if (!target) throw new Error('No page available to name');
     _tabNames.set(name, target);
-    target.on('close', () => {
+    target.once('close', () => {
       for (const [n, p] of _tabNames) {
-        if (p === target) { _tabNames.delete(n); break; }
+        if (p === target) { _tabNames.delete(n); }
       }
     });
   }
@@ -211,24 +211,35 @@ export function createBrowserManager(config: AppConfig) {
         }
 
         // Resolve by name first (most specific), then by index, else active tab
-        if (tabName !== undefined) {
-          const named = _tabNames.get(tabName);
+        const cleanName = typeof tabName === 'string' ? tabName.trim() : undefined;
+        if (cleanName) {
+          let named = _tabNames.get(cleanName);
           if (!named || named.isClosed()) {
-            throw new Error(`No open tab found with name "${tabName}"`);
+            // "if no name present then create"
+            // Reuse current page if it is an untouched about:blank page, otherwise open a fresh tab
+            const isUnusedBlank = _page && !_page.isClosed() && _page.url() === 'about:blank' && ![..._tabNames.values()].includes(_page);
+            if (isUnusedBlank && _page) {
+              named = _page;
+            } else {
+              named = await context.newPage();
+              await applyStealthPatches(named, config);
+            }
+            setTabName(cleanName, named);
           }
           _page = named;
           await _page.bringToFront();
-        } else if (tabIndex !== undefined) {
+        } else if (tabIndex !== undefined && tabIndex !== null && !isNaN(Number(tabIndex))) {
+          const idx = Number(tabIndex);
           const pages = context.pages();
-          if (tabIndex < 0 || tabIndex >= pages.length) {
-            throw new Error(`Tab index ${tabIndex} out of range (0-${pages.length - 1})`);
+          if (idx < 0 || idx >= pages.length) {
+            throw new Error(`Tab index ${idx} out of range (0-${pages.length - 1})`);
           }
-          _page = pages[tabIndex];
+          _page = pages[idx];
           await _page.bringToFront();
         }
 
         // Track which tab was resolved (for output enrichment)
-        _lastTabName = tabName !== undefined ? tabName : null;
+        _lastTabName = cleanName || null;
         _lastTabIndex = context.pages().indexOf(_page);
         updateActivity(_page);
 

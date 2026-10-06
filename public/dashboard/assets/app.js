@@ -1221,11 +1221,28 @@
     document.getElementById('selectedToolName').textContent = t.name;
     document.getElementById('selectedToolDesc').textContent = t.description;
     
-    // Construct sample arguments based on input schema
+    // Construct clean, minimal sample arguments
     const sample = {};
-    if (t.inputSchema && t.inputSchema.properties) {
+    if (toolName === 'browser_navigate') {
+      sample.url = 'https://google.com';
+    } else if (toolName === 'browser_click') {
+      sample.selector = 'button';
+    } else if (toolName === 'browser_type') {
+      sample.selector = 'input';
+      sample.text = 'Hello World';
+    } else if (toolName === 'browser_screenshot') {
+      sample.fullPage = false;
+    } else if (toolName === 'browser_new_tab') {
+      sample.url = 'https://google.com';
+    } else if (toolName === 'browser_evaluate') {
+      sample.script = 'document.title';
+    } else if (t.inputSchema && t.inputSchema.properties) {
+      const required = new Set(t.inputSchema.required || []);
       for (const [k, p] of Object.entries(t.inputSchema.properties)) {
-        if (p.type === 'string') sample[k] = '';
+        if (required.size > 0 && !required.has(k)) continue;
+        if (p.default !== undefined) sample[k] = p.default;
+        else if (p.enum && p.enum.length) sample[k] = p.enum[0];
+        else if (p.type === 'string') sample[k] = '';
         else if (p.type === 'number') sample[k] = 0;
         else if (p.type === 'boolean') sample[k] = false;
         else sample[k] = null;
@@ -1253,8 +1270,12 @@
     pre.textContent = 'Executing...';
     try {
       const res = await api(`/tools/${encodeURIComponent(name)}/run`, { method: 'POST', body: args });
-      pre.textContent = JSON.stringify(res.result, null, 2);
-      toast(`Tool executed in ${res.ms}ms`, res.ok ? 'success' : 'error');
+      pre.textContent = JSON.stringify(res.result || res, null, 2);
+      if (res.success === false || res.result?.isError) {
+        toast(res.error || 'Tool reported an error', 'warning');
+      } else {
+        toast(`Tool executed in ${res.ms}ms`, 'success');
+      }
       loadOverview();
     } catch (e) {
       pre.textContent = `Error: ${e.message}`;
