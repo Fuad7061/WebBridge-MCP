@@ -88,6 +88,10 @@
     if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
       opts.body = JSON.stringify(opts.body);
     }
+    // Fastify throws FST_ERR_CTP_EMPTY_JSON_BODY if Content-Type is application/json but body is empty
+    if (!opts.body) {
+      delete opts.headers['Content-Type'];
+    }
     try {
       const res = await fetch(url, opts);
       if (res.status === 401) {
